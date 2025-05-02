@@ -1,0 +1,21 @@
+name: rfi-bot
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.8
+  - pip
+  - numpy
+  - pandas
+  - matplotlib
+  - scikit-learn
+  - pytorch
+  - transformers
+  - langchain
+  - pip:
+    - openai
+    - tiktoken
+    - anyscale
+    - boto3
+    - python-dotenv
+    - streamlit
