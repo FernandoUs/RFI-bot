@@ -1,8 +1,8 @@
 import os
 import re
+import uuid
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
-import uuid
 from app.utils.config import get_config
 from app.services.storage import DatabaseManager
 from app.services.rfi_generator import generate_rfi_pdf
@@ -43,7 +43,7 @@ def process_incoming_message(sender, message, media_urls=None):
             'rfi_id': str(uuid.uuid4())[:8], 
             'send_pdf': False
         }
-        msg.body("¡Bienvenido al asistente de RFI! Vamos a ayudarte un RFI según tus necesdidades")
+        msg.body("¡Bienvenido al asistente de RFI! Vamos a ayudarte un RFI según tus necesidades.")
         send_step_prompt(session, msg)
         db.save_session(sender, session)
         return str(resp), session
@@ -178,6 +178,7 @@ def handle_step(session, message, msg_response):
         if re.match(r'^\d+$', message):
             session['data']['piso'] = message
             session['step'] = 5
+            send_step_prompt(session, msg_response)
         else:
             msg_response.body("Por favor, ingresa un número válido para el piso.")
             return
@@ -185,6 +186,7 @@ def handle_step(session, message, msg_response):
     elif step == 5:
         session['data']['sector'] = message
         session['step'] = 6
+        send_step_prompt(session, msg_response)
 
     elif step == 6:
         if len(message.strip()) < 10:
@@ -225,8 +227,9 @@ def handle_step(session, message, msg_response):
             msg_response.body("Selecciona una opción válida:\n1. Sí\n2. No")
         return
 
-    if session['step'] != 8:
-        send_step_prompt(session, msg_response)
+    if session['step'] != 8 and not session.get('send_pdf', False):
+        if not msg_response.body: 
+            send_step_prompt(session, msg_response)
 
 
 def send_step_prompt(session, msg_response):
@@ -272,60 +275,56 @@ def send_step_prompt(session, msg_response):
 def send_pdf_to_whatsapp(phone_number, pdf_tuple, rfi_id):
     """
     Envía un PDF por WhatsApp usando Twilio
-    
-    Args:
-        phone_number: Número de teléfono del destinatario
-        pdf_tuple: Tupla con (pdf_path, pdf_url)
-        rfi_id: ID del RFI generado
-        
-    Returns:
-        bool: True si se envió correctamente, False en caso contrario
     """
     config = get_config()
     
     # Desempaquetar la tupla
     pdf_path, pdf_url = pdf_tuple
     
-    if pdf_url.startswith("ERROR:"):
+    if pdf_url and pdf_url.startswith("ERROR:"):
         pdf_url = None
     
     # Limpiar el número de teléfono para prevenir errores
     clean_phone = phone_number.replace(' ', '').replace('\u200e', '')
     if "whatsapp:" in clean_phone:
         clean_phone = clean_phone.replace("whatsapp:", "")
-    # Inicializar cliente de Twilio
     
     try:
         # Inicializar cliente de Twilio
         client = Client(config.TWILIO_ACCOUNT_SID, config.TWILIO_AUTH_TOKEN)
         
-        # Preparar mensaje
-        message = client.messages.create(
-            body=f"Aquí está tu RFI #{rfi_id}. Por favor revisa el documento adjunto.",
-            from_=f"whatsapp:{config.TWILIO_PHONE_NUMBER}",
-            to=f"whatsapp:{clean_phone}"
-        )
-        
-        # Añadir URL del PDF si está disponible
-        if pdf_url:
-            message['media_url'] = [pdf_url]
+        # Preparar mensaje según la disponibilidad del PDF
+        if not pdf_url:
+            msg_body = f"No se pudo generar el PDF para tu RFI #{rfi_id}. Por favor, intenta nuevamente más tarde."
+            
+            message = client.messages.create(
+                body=msg_body,
+                from_=f"whatsapp:{config.TWILIO_PHONE_NUMBER}",
+                to=f"whatsapp:{clean_phone}"
+            )
         else:
-            message['body'] += "\n\nNo se pudo generar el PDF. Por favor, intenta nuevamente más tarde."
-        
-        # Enviar mensaje
-        message = client.messages.create(**message)
+            # Enviar el PDF como enlace en lugar de adjunto para mayor confiabilidad
+            msg_body = f"Tu RFI #{rfi_id} está listo. Puedes descargar el documento desde este enlace:\n\n{pdf_url}"
+            
+            message = client.messages.create(
+                body=msg_body,
+                from_=f"whatsapp:{config.TWILIO_PHONE_NUMBER}",
+                to=f"whatsapp:{clean_phone}"
+            )
         
         print(f"Mensaje enviado con ID: {message.sid}")
-
+        
+        # Mensaje de confirmación
         client.messages.create(
-            body="Tu RFI ha sido procesado exitosamente'.",
+            body="Tu RFI ha sido procesado exitosamente.",
             from_=f"whatsapp:{config.TWILIO_PHONE_NUMBER}", 
             to=f"whatsapp:{clean_phone}"
         )
         
-        # Eliminar la sesión para permitir empezar de nuevo
+        # Eliminar la sesión
         db.delete_session(phone_number)
         return True
     except Exception as e:
-        print(f"Error al enviar PDF:\n{e}")
+        import traceback
+        print(f"Error al enviar PDF:\n{e}\n{traceback.format_exc()}")
         return False
