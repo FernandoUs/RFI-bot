@@ -46,6 +46,8 @@ def get_config():
         'WHATSAPP_API_TOKEN': os.getenv('WHATSAPP_API_TOKEN'),
         'WHATSAPP_PHONE_NUMBER_ID': os.getenv('WHATSAPP_PHONE_NUMBER_ID'),
         'WHATSAPP_BUSINESS_ACCOUNT_ID': os.getenv('WHATSAPP_BUSINESS_ACCOUNT_ID'),
+        "S3_UPLOAD_ENABLED": True
+
     }
     
     # Crear directorio temporal si no existe

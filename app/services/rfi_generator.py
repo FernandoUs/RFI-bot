@@ -4,6 +4,10 @@ from datetime import datetime
 from app.utils.config import get_config
 import google.generativeai as genai
 from PIL import Image
+import uuid
+import time
+import requests
+import threading
 from app.services.s3_service import upload_file_to_s3
 
 def improve_description(description):
@@ -29,11 +33,11 @@ def improve_description(description):
         model = genai.GenerativeModel('gemini-1.5-pro')
         
         # Crear prompt de sistema más específico y acotado
-        prompt = f"""Como ingeniero de construcción, mejora ÚNICAMENTE la siguiente descripción técnica, 
-        haciéndola más profesional y detallada. NO generes un RFI completo, NO agregues campos adicionales,
-        NO incluyas "Detalles Específicos", "Adjuntos", ni otros elementos de formato.
+        prompt = f"""Como ingeniero de construcción, mejora ÚNICAMENTE la siguiente descripción técnica para que este dentro de un RFI, 
+        haciéndola más profesional y un pocoo más detallada pero no tan extensa. NO generes un RFI completo, NO agregues campos adicionales,
+        NO incluyas "Detalles Específicos", "Adjuntos", ni otros elementos de formato, NO inventes ejes ni datos adicionales.
         
-        SOLO mejora el texto de la descripción original manteniendo su extensión similar (máximo 2-3 párrafos).
+        SOLO mejora el texto de la descripción original manteniendo su extensión similar (máximo 1-2 párrafos).
         NO incluyas "Asunto:", "Descripción:", ni otras etiquetas o títulos.
         
         Descripción original:
@@ -158,6 +162,8 @@ def generate_rfi_pdf(data, rfi_id, phone_number=None):
     pdf.multi_cell(0, 7, descripcion)
     pdf.ln(5)
     
+    temp_files = []
+    
     # NUEVO: Agregar imágenes si existen
     if "images" in data and data["images"]:
         pdf.ln(5)
@@ -165,7 +171,7 @@ def generate_rfi_pdf(data, rfi_id, phone_number=None):
         pdf.cell(190, 10, "Imágenes Adjuntas", 0, 1)
         pdf.line(10, pdf.get_y(), 200, pdf.get_y())
         pdf.ln(5)
-        
+
         # Iterar por cada imagen
         for i, image_url in enumerate(data["images"]):
             try:
@@ -175,29 +181,33 @@ def generate_rfi_pdf(data, rfi_id, phone_number=None):
                 
                 if response.status_code == 200:
                     # Guardar temporalmente
-                    temp_img_path = os.path.join(config.TEMP_FOLDER, f"temp_img_{rfi_id}_{i}.jpg")
+                    temp_file_id = str(uuid.uuid4())[:8]
+                    temp_img_path = os.path.join(config.TEMP_FOLDER, f"temp_image_{temp_file_id}.jpg")
                     with open(temp_img_path, "wb") as f:
                         f.write(response.content)
+                    
+                    temp_files.append(temp_img_path)
                     
                     # Añadir leyenda
                     pdf.set_font("Arial", "I", 10)
                     pdf.cell(0, 10, f"Imagen {i+1}:", 0, 1)
                     
+                    try:
                     # Calcular dimensiones para mantenerla dentro de los márgenes
-                    img_width = 180  # ancho máximo (en mm)
-                    img_height = 120  # alto máximo (en mm)
-                    img = Image.open(temp_img_path)
-                    img_w, img_h = img.size
-                    ratio = min(img_width/img_w, img_height/img_h)
-                    final_width = img_w * ratio
-                    final_height = img_h * ratio
-                    pdf.image(temp_img_path, x=15, y=pdf.get_y(), w=final_width, h=final_height)
-
-                    # Añadir espacio después de la imagen - ahora basado en la altura real
-                    pdf.ln(final_height + 10)
-                    
-                    # Eliminar archivo temporal
-                    os.remove(temp_img_path)
+                        img_width = 180  # ancho máximo (en mm)
+                        img_height = 120  # alto máximo (en mm)
+                        img = Image.open(temp_img_path)
+                        img_w, img_h = img.size
+                        ratio = min(img_width/img_w, img_height/img_h)
+                        final_width = img_w * ratio
+                        final_height = img_h * ratio
+                        pdf.image(temp_img_path, x=15, y=pdf.get_y(), w=final_width, h=final_height)
+                        pdf.ln(final_height + 10)
+                    except Exception as e:
+                        print(f"Error al procesar imagen {i+1} con PIL: {e}")
+                        pdf.set_text_color(255, 0, 0)
+                        pdf.multi_cell(0, 7, f"Error al procesar imagen {i+1}: {str(e)}")
+                        pdf.set_text_color(0, 0, 0)
                 else:
                     pdf.set_text_color(255, 0, 0)
                     pdf.multi_cell(0, 7, f"Error al cargar imagen {i+1}: Error {response.status_code}")
@@ -229,15 +239,47 @@ def generate_rfi_pdf(data, rfi_id, phone_number=None):
     # Asegurarse de que exista la carpeta temporal
     os.makedirs(config.TEMP_FOLDER, exist_ok=True)
     
-    # Guardar PDF
-    pdf.output(pdf_path)
+    try:
+        pdf.output(pdf_path)
+        print(f"PDF generado exitosamente: {pdf_path}")
+        
+        # Eliminar archivos temporales DESPUÉS de que el PDF se ha guardado
+        if temp_files:
+            time.sleep(3)  # Pequeña pausa para asegurar que el PDF ha liberado los archivos
+            
+            # Definir una función para limpiar archivos temporales
+            def cleanup_files():
+                for temp_file in temp_files:
+                    if os.path.exists(temp_file):
+                        try:
+                            if os.path.exists(temp_file):
+                                os.remove(temp_file)
+                                print(f"Archivo temporal eliminado: {temp_file}")
+                        except Exception as del_error:
+                            print(f"No se pudo eliminar archivo temporal {temp_file}: {del_error}")
+            
+            # Crear y lanzar hilo para limpieza
+            cleanup_thread = threading.Thread(target=cleanup_files)
+            cleanup_thread.daemon = True
+            cleanup_thread.start()
+    except Exception as pdf_error:
+        print(f"Error al guardar el PDF: {pdf_error}")
     
-    # Subir a S3 si corresponde
-    if config.S3_UPLOAD_ENABLED:
-        from app.services.s3_service import upload_file_to_s3
-        s3_url = upload_file_to_s3(pdf_path, phone_number=phone_number, file_type="pdf", object_name=pdf_filename)
-        return pdf_path, s3_url
-    else:
+    # Intentar subir a S3 si está disponible
+    try:
+        # Verificar si está disponible la función de S3
+        if hasattr(config, 'S3_UPLOAD_ENABLED') and config.S3_UPLOAD_ENABLED:
+            s3_url = upload_file_to_s3(pdf_path, phone_number=phone_number, file_type="pdf", object_name=pdf_filename)
+            print(f"PDF subido a S3: {s3_url}")
+            return pdf_path, s3_url
+        else:
+            # S3 no está habilitado, usar un archivo local
+            local_url = f"file://{pdf_path}"
+            print(f"S3 no está habilitado. Usando archivo local: {local_url}")
+            return pdf_path, local_url
+    except Exception as e:
+        # Error al subir a S3, devolver ruta local
+        print(f"Error al subir PDF a S3: {e}")
         return pdf_path, f"file://{pdf_path}"
 
 def analyze_plan_image(image_path):

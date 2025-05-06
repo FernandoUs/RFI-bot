@@ -78,7 +78,6 @@ def process_incoming_message(sender, message, media_urls=None):
             send_step_prompt(session, msg)
             return str(resp), session
     
-    # Manejo del paso 7.6 (envío de imagen)
     if session['step'] == 7.6:
         if media_urls and media_urls[0]:
             # Guardar las URLs de las imágenes
@@ -87,32 +86,45 @@ def process_incoming_message(sender, message, media_urls=None):
             
             s3_image_urls = []
             for i, media_url in enumerate(media_urls):
-                s3_url = save_image_from_url(media_url, sender, i + 1, session['rfi_id'])
+                s3_url = save_image_from_url(media_url, sender, len(session['data']['images']) + i + 1, session['rfi_id'])
                 if s3_url:
                     s3_image_urls.append(s3_url)
                     print(f"Imagen {i+1} guardada correctamente en S3: {s3_url}")
                 else:
                     print(f"No se pudo guardar la imagen {i+1} de {media_url}")
+            
             if s3_image_urls:
                 session['data']['images'].extend(s3_image_urls)
-                session['step'] = 8  # Avanzar al paso final
-                msg.body("Imagen recibida y almacenada correctamente. Generando archivo RFI...")
-            else:
-                msg.body("Hubo problemas al procesar las imágenes. Generando archivo RFI sin imágenes...")
                 session['step'] = 8
+                session['send_pdf'] = True
+                msg.body("Imagen recibida correctamente. Generando archivo RFI con la imagen...")
+            else:
+                msg.body("Hubo problemas al procesar la imagen. Generando RFI sin imágenes...")
+                session['step'] = 8
+                session['send_pdf'] = True
             
             db.save_session(sender, session)
             return str(resp), session
-                    
+        elif message and message.lower() == "saltar":
+            session['step'] = 8
+            session['send_pdf'] = True
+            msg.body("Generando RFI sin imágenes...")
+            db.save_session(sender, session)
+            return str(resp), session
+        else:
+            msg.body("No se detectó ninguna imagen. Por favor, envía una imagen o escribe 'saltar' para continuar sin imágenes.")
+            db.save_session(sender, session)
+            return str(resp), session
+    
     # Procesar el mensaje según el paso actual
     handle_step(session, message, msg)
     
     # Si es necesario enviar un PDF, indicarlo en la sesión
-    if session.get('step') == 8:  # Paso final
+    if session.get('step') == 8 and not session.get('send_pdf'):  # Paso final y aún no marcado para enviar PDF
         session['send_pdf'] = True
         session['delete_after_pdf'] = True
         msg.body("Procesando tu RFI... Recibirás el documento en breve.")
-    
+        
     db.save_session(sender, session)
         
     # Devolver la respuesta y la sesión actualizada
@@ -227,6 +239,7 @@ def handle_step(session, message, msg_response):
             msg_response.body("Envía la imagen del problema ahora.")
         elif message == "2":
             session['step'] = 8
+            session['send_pdf'] = True
             msg_response.body("Generando archivo RFI sin imágenes...")
         else:
             msg_response.body("Selecciona una opción válida:\n1. Sí\n2. No")
@@ -276,118 +289,6 @@ def send_step_prompt(session, msg_response):
     
     return msg_response
 
-def download_media_from_whatsapp(media_url):
-    """
-    Descarga un archivo multimedia desde WhatsApp Business API
-    """
-    config = get_config()
-    try:
-        # Obtener el token de WhatsApp/Twilio
-        account_sid = config.TWILIO_ACCOUNT_SID
-        auth_token = config.TWILIO_AUTH_TOKEN
-        
-        if not auth_token or not account_sid:
-            print("ERROR: No se ha configurado el token o SID de Twilio")
-            return None
-        
-        print(f"Descargando imagen desde: {media_url}")
-        
-        # Verificar si la URL sigue el formato esperado
-        # Formato esperado: https://api.twilio.com/2010-04-01/Accounts/{AccountSid}/Messages/{MessageSid}/Media/{MediaSid}
-        
-        # Extraer correctamente las partes de la URL
-        import re
-        
-        # Usar expresiones regulares para extraer los IDs correctamente
-        match = re.search(r'Accounts/([^/]+)/Messages/([^/]+)/Media/([^/]+)', media_url)
-        
-        if match:
-            url_account_sid = match.group(1)
-            message_sid = match.group(2)
-            media_sid = match.group(3)
-            
-            print(f"URL analizada: Account SID={url_account_sid}, Message SID={message_sid}, Media SID={media_sid}")
-            
-            # Verificar que el SID de la cuenta sea válido
-            if not url_account_sid.startswith('AC'):
-                print(f"SID de cuenta inválido en URL: {url_account_sid}")
-                # No seguir con el SID extraído
-            else:
-                # Usar el SID de la URL si es diferente
-                if url_account_sid != account_sid:
-                    print(f"Usando SID de la URL ({url_account_sid}) en lugar del configurado ({account_sid})")
-                    account_sid = url_account_sid
-            
-            # Intentar descargar usando el cliente Twilio
-            try:
-                client = Client(account_sid, auth_token)
-                media = client.messages(message_sid).media(media_sid).fetch()
-                
-                # Construir la URL de contenido correctamente
-                content_url = f"https://api.twilio.com{media.uri}"
-                
-                # Descargar con autenticación básica
-                response = requests.get(
-                    content_url,
-                    auth=(account_sid, auth_token)
-                )
-                
-                if response.status_code == 200:
-                    print(f"Imagen descargada correctamente: {len(response.content)} bytes")
-                    return response.content
-                else:
-                    print(f"Error al descargar con SDK: {response.status_code}, {response.text}")
-            except Exception as e:
-                print(f"Error al usar SDK de Twilio: {e}")
-        
-        # Si la extracción de la URL falló o la descarga con SDK falló, intentar directamente
-        
-        # Intentar método alternativo: agregar /Content al final
-        content_url = media_url
-        if not content_url.endswith('/Content'):
-            content_url = f"{media_url}/Content"
-        
-        print(f"Intentando descarga directa con: {content_url}")
-        
-        # Usar autenticación básica con las credenciales correctas
-        response = requests.get(
-            content_url,
-            auth=(account_sid, auth_token)
-        )
-        
-        if response.status_code == 200:
-            print(f"Descarga directa exitosa: {len(response.content)} bytes")
-            return response.content
-        else:
-            print(f"Error en descarga directa: {response.status_code}, {response.text}")
-            
-            # Marcador de posición: si todo falla, crear una imagen de marcador
-            print("Creando imagen de marcador de posición")
-            try:
-                from PIL import Image, ImageDraw
-                img = Image.new('RGB', (800, 600), color=(255, 255, 255))
-                d = ImageDraw.Draw(img)
-                d.text((10, 10), "Imagen no disponible", fill=(0, 0, 0))
-                d.text((10, 30), "Error al descargar desde WhatsApp", fill=(255, 0, 0))
-                
-                # Guardar en memoria
-                import io
-                img_bytes = io.BytesIO()
-                img.save(img_bytes, format='JPEG')
-                img_bytes.seek(0)
-                
-                return img_bytes.read()
-            except Exception as img_error:
-                print(f"Error al crear imagen de marcador: {img_error}")
-                return None
-            
-        return None
-        
-    except Exception as e:
-        print(f"Error general al descargar multimedia: {e}")
-        import traceback
-        print(traceback.format_exc())
-        return None
 
 def send_pdf_to_whatsapp(phone_number, pdf_tuple, rfi_id):
     """

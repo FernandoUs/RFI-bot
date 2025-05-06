@@ -2,6 +2,7 @@ import boto3
 import os
 import mimetypes
 from app.utils.config import get_config
+from app.services.media_utils import download_media_from_whatsapp
 import requests
 import hashlib
 temp_dir = os.path.join(os.getcwd(), 'temp')
@@ -114,7 +115,6 @@ def save_image_from_url(media_url, phone_number, image_index, rfi_id):
     config = get_config()
     try:
         # Intentar descargar la imagen
-        from app.services.whatsapp_api import download_media_from_whatsapp
         image_content = download_media_from_whatsapp(media_url)
         
         # Generar nombre de archivo
@@ -146,12 +146,8 @@ def save_image_from_url(media_url, phone_number, image_index, rfi_id):
                 return None
         
         # Subir a S3
-        from app.services.s3_service import upload_file_to_s3
         s3_url = upload_file_to_s3(temp_path, phone_number=phone_number, file_type="image", object_name=filename)
-        
-        # Eliminar archivo temporal
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
+    
         
         return s3_url
     except Exception as e:
