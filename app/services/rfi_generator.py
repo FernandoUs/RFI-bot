@@ -2,211 +2,81 @@ import os
 from fpdf import FPDF
 from datetime import datetime
 from app.utils.config import get_config
-import requests
-import random
-from openai import OpenAI
-import traceback
+import google.generativeai as genai
+from PIL import Image
 from app.services.s3_service import upload_file_to_s3
 
 def improve_description(description):
     """
-    Mejora la descripción del problema usando múltiples modelos con sistema de respaldo
+    Mejora la descripción usando Google Gemini API
     """
     config = get_config()
     
-    # Primero intentar con AnyScale (si está configurado)
-    if hasattr(config, 'ANY_SCALE_API_KEY') and config.ANY_SCALE_API_KEY:
-        try:
-            
-            print("Intentando mejorar descripción con AnyScale...")
-            client = OpenAI(
-                api_key=config.ANY_SCALE_API_KEY,
-                base_url=config.ANY_SCALE_API_BASE
-            )
-            
-            response = client.chat.completions.create(
-                model="meta-llama/Llama-3-8b-chat-hf",
-                messages=[
-                    {"role": "system", "content": "Eres un experto en construcción que responde en español. Mejora descripciones técnicas para RFIs manteniendo un tono profesional y preciso."},
-                    {"role": "user", "content": f"Mejora esta descripción técnica para un RFI de construcción, haciéndola más profesional y detallada. Responde SOLO en español: {description}"}
-                ],
-                temperature=0.5,
-                max_tokens=300
-            )
-            
-            improved_text = response.choices[0].message.content.strip()
-            
-            if improved_text and len(improved_text) > 20 and contains_spanish(improved_text):
-                print("Descripción mejorada exitosamente con AnyScale")
-                return improved_text
-            
-            print("AnyScale devolvió texto inadecuado, probando con Hugging Face")
-        except Exception as e:
-            print(f"Error al usar AnyScale: {e}")
-    
-    # Si llegamos aquí, AnyScale falló o no está configurado, intentar con Hugging Face
     try:
-        huggingface_token = config.HUGGINGFACE_API_KEY
+        # Verificar si existe la API key de Google
+        google_api_key = config.GOOGLE_API_KEY
         
-        if not huggingface_token or huggingface_token == "tu_token_copiado_aquí":
-            print("ERROR: No se ha configurado el token de Hugging Face correctamente")
-            return enhance_description_locally(description)
-        
-        # Definir varios modelos a probar en orden
-        models = [
-            {
-                "name": "GPT-2 en Español",
-                "url": "https://api-inference.huggingface.co/models/PlanTL-GOB-ES/gpt2-large-bne",
-                "type": "text-generation",
-                "prompt": f"Mejora esta descripción para un RFI de construcción: {description}\n\nDescripción mejorada:"
-            },
-            {
-                "name": "mT5 Pequeño",
-                "url": "https://api-inference.huggingface.co/models/google/mt5-small",
-                "type": "text2text-generation",
-                "prompt": f"Mejora esta descripción técnica para un RFI de construcción en español: {description}"
-            },
-            {
-                "name": "MBart Multilingüe",
-                "url": "https://api-inference.huggingface.co/models/facebook/mbart-large-50-many-to-many-mmt",
-                "type": "translation",
-                "prompt": description,
-                "params": {
-                    "src_lang": "es_XX",
-                    "tgt_lang": "es_XX"
-                }
-            }
-        ]
-        
-        headers = {
-            "Authorization": f"Bearer {huggingface_token}",
-            "Content-Type": "application/json"
-        }
-        
-        # Intentar cada modelo secuencialmente
-        for model in models:
-            try:
-                print(f"Intentando mejorar descripción con {model['name']}...")
-                
-                # Configurar payload según el tipo de modelo
-                if model["type"] == "translation":
-                    payload = {
-                        "inputs": model["prompt"],
-                        "parameters": {
-                            "max_length": 300,
-                            "temperature": 0.7,
-                            "top_p": 0.85,
-                            "do_sample": True,
-                            "src_lang": model["params"]["src_lang"],
-                            "tgt_lang": model["params"]["tgt_lang"]
-                        }
-                    }
-                else:
-                    payload = {
-                        "inputs": model["prompt"],
-                        "parameters": {
-                            "max_length": 300,
-                            "temperature": 0.7,
-                            "top_p": 0.85,
-                            "do_sample": True,
-                            "return_full_text": False
-                        }
-                    }
-                
-                # Hacer la solicitud con timeout
-                response = requests.post(model["url"], headers=headers, json=payload, timeout=15)
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    
-                    # Extraer texto según el tipo de modelo
-                    if model["type"] == "translation":
-                        field_name = "translation_text"
-                    else:
-                        field_name = "generated_text"
-                    
-                    # Intentar extraer el texto generado
-                    if isinstance(result, list) and len(result) > 0:
-                        improved_text = result[0].get(field_name, "")
-                    else:
-                        improved_text = result.get(field_name, "")
-                    
-                    # Verificar calidad del texto generado
-                    if improved_text and len(improved_text) > 20 and contains_spanish(improved_text):
-                        print(f"Descripción mejorada exitosamente con {model['name']}")
-                        return improved_text
-                    else:
-                        print(f"El modelo {model['name']} devolvió texto inadecuado: {improved_text}")
-                
-                else:
-                    error_msg = f"Error {response.status_code}: {response.text}"
-                    print(f"Error con modelo {model['name']}: {error_msg}")
-                
-            except requests.exceptions.Timeout:
-                print(f"Timeout al consultar el modelo {model['name']}")
-            except Exception as e:
-                print(f"Error al probar modelo {model['name']}: {e}")
-                print(traceback.format_exc())
-        
-        # Si llegamos aquí, todos los modelos fallaron
-        print("Todos los modelos fallaron, usando fallback local")
-        return enhance_description_locally(description)
-    
-    except Exception as e:
-        print(f"Error general al mejorar la descripción: {e}")
-        return enhance_description_locally(description)
-
-def contains_spanish(text):
-    """Verifica si el texto contiene caracteres típicos del español"""
-    spanish_chars = ['á', 'é', 'í', 'ó', 'ú', 'ñ', 'ü', '¿', '¡']
-    spanish_words = ['el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'y', 'o', 'pero', 'porque', 'que', 'con']
-    
-    # Verificar caracteres especiales
-    for char in spanish_chars:
-        if char in text.lower():
-            return True
-    
-    # Verificar palabras comunes
-    for word in spanish_words:
-        if f" {word} " in f" {text.lower()} ":
-            return True
-    
-    return False
-
-def enhance_description_locally(description):
-    """
-    Fallback local para mejorar descripciones cuando la API no está disponible
-    """
-    # Lista de prefijos profesionales en español
-    prefixes = [
-        "Se ha identificado una discrepancia técnica donde ",
-        "Se ha detectado un problema de construcción en el que ",
-        "Durante la inspección se observó que ",
-        "Se requiere información adicional debido a que ",
-        "El equipo técnico ha encontrado que ",
-        "La revisión del proyecto ha revelado que ",
-        "Es necesario aclarar la especificación técnica porque "
-    ]
-    
-    prefix = random.choice(prefixes)
-    
-    # Evitar duplicación si ya tiene un prefijo similar
-    for p in prefixes:
-        if description.lower().startswith(p.lower()):
+        if not google_api_key:
+            print("ERROR: No se ha configurado la API key de Google")
             return description
-    
-    # Mejorar formato
-    enhanced = description.strip()
-    if not enhanced.endswith("."):
-        enhanced += "."
-    
-    # Capitalizar primera letra si es necesario
-    if enhanced and enhanced[0].islower():
-        enhanced = enhanced[0].upper() + enhanced[1:]
-    
-    return f"{prefix}{enhanced}"
+        
+        print("Usando Gemini API para mejorar la descripción...")
+        
+        # Configurar la API
+        genai.configure(api_key=google_api_key)
+        
+        # Crear un modelo
+        model = genai.GenerativeModel('gemini-1.5-pro')
+        
+        # Crear prompt de sistema más específico y acotado
+        prompt = f"""Como ingeniero de construcción, mejora ÚNICAMENTE la siguiente descripción técnica, 
+        haciéndola más profesional y detallada. NO generes un RFI completo, NO agregues campos adicionales,
+        NO incluyas "Detalles Específicos", "Adjuntos", ni otros elementos de formato.
+        
+        SOLO mejora el texto de la descripción original manteniendo su extensión similar (máximo 2-3 párrafos).
+        NO incluyas "Asunto:", "Descripción:", ni otras etiquetas o títulos.
+        
+        Descripción original:
+        {description}
+        
+        Descripción mejorada (solo el texto, sin añadir estructura de RFI):"""
+        
+        # Generar respuesta
+        response = model.generate_content(prompt)
+        
+        # Verificar si hay respuesta válida
+        if response.text:
+            improved_text = response.text.strip()
+            
+            # Eliminar posibles etiquetas o títulos que el modelo podría haber generado
+            lines = improved_text.split('\n')
+            cleaned_lines = []
+            for line in lines:
+                # Eliminar líneas que contengan patrones de títulos o etiquetas
+                if not line.strip().startswith(('**', '* ', 'Descripción:', 'Asunto:', 'Detalles:', 'Adjuntos:')):
+                    cleaned_lines.append(line)
+            
+            improved_text = '\n'.join(cleaned_lines).strip()
+            
+            # Comprobar si la respuesta tiene suficiente contenido
+            if len(improved_text) < len(description) * 0.5 or len(improved_text) < 20:
+                print("La respuesta generada fue demasiado corta")
+                return description
+            
+            print("Descripción mejorada exitosamente con Gemini")
+            return improved_text
+        else:
+            print("No se obtuvo respuesta de Gemini")
+            return description
+        
+    except Exception as e:
+        print(f"Error al mejorar la descripción: {e}")
+        import traceback
+        print(traceback.format_exc())
+        return description
 
-def generate_rfi_pdf(data, rfi_id):
+
+def generate_rfi_pdf(data, rfi_id, phone_number=None):
     """
     Genera un PDF con formato RFI y los datos recopilados
     """
@@ -226,48 +96,149 @@ def generate_rfi_pdf(data, rfi_id):
     
     # Información del RFI
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(95, 10, f"RFI #: {rfi_id}", 0, 0)
-    pdf.cell(95, 10, f"Fecha: {datetime.now().strftime('%d/%m/%Y')}", 0, 1)
+    pdf.cell(50, 10, f"ID de RFI: {rfi_id}", 0, 1)
+    pdf.cell(50, 10, f"Fecha: {datetime.now().strftime('%d/%m/%Y')}", 0, 1)
     pdf.ln(5)
     
-    # Datos recopilados
+    # Detalles
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(190, 10, "Información del Problema:", 0, 1)
-    pdf.set_font("Arial", "", 12)
+    pdf.cell(190, 10, "Detalles de la Solicitud", 0, 1)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(5)
     
-    pdf.cell(190, 10, f"Especialidad: {data.get('especialidad', 'No especificado')}", 0, 1)
+    # Información detallada
+    pdf.set_font("Arial", "", 11)
     
-    if data.get('incompatibilidad', False):
-        pdf.cell(190, 10, f"Incompatibilidad con: {data.get('incompatibilidad_con', 'No especificado')}", 0, 1)
-    else:
-        pdf.cell(190, 10, "No presenta incompatibilidad con otras especialidades", 0, 1)
+    if "especialidad" in data:
+        pdf.set_font("Arial", "B", 11)
+        pdf.cell(50, 10, "Especialidad:", 0, 0)
+        pdf.set_font("Arial", "", 11)
+        pdf.cell(140, 10, data.get("especialidad", ""), 0, 1)
     
-    pdf.cell(190, 10, f"Piso: {data.get('piso', 'No especificado')}", 0, 1)
-    pdf.cell(190, 10, f"Sector: {data.get('sector', 'No especificado')}", 0, 1)
+    # Incompatibilidad
+    if "incompatibilidad" in data:
+        incompatibilidad = data.get("incompatibilidad")
+        
+        pdf.set_font("Arial", "B", 11)
+        pdf.cell(80, 10, "¿Presenta incompatibilidad?:", 0, 0)
+        pdf.set_font("Arial", "", 11)
+        pdf.cell(110, 10, "Sí" if incompatibilidad else "No", 0, 1)
+        
+        if incompatibilidad and "incompatibilidad_con" in data:
+            pdf.set_font("Arial", "B", 11)
+            pdf.cell(80, 10, "Incompatibilidad con:", 0, 0)
+            pdf.set_font("Arial", "", 11)
+            pdf.cell(110, 10, data.get("incompatibilidad_con", ""), 0, 1)
     
+    if "piso" in data:
+        pdf.set_font("Arial", "B", 11)
+        pdf.cell(50, 10, "Piso:", 0, 0)
+        pdf.set_font("Arial", "", 11)
+        pdf.cell(140, 10, data.get("piso", ""), 0, 1)
+    
+    if "sector" in data:
+        pdf.set_font("Arial", "B", 11)
+        pdf.cell(50, 10, "Sector:", 0, 0)
+        pdf.set_font("Arial", "", 11)
+        pdf.cell(140, 10, data.get("sector", ""), 0, 1)
+    
+    # Descripción del problema
     pdf.ln(5)
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(190, 10, "Descripción del Problema:", 0, 1)
-    pdf.set_font("Arial", "", 12)
+    pdf.cell(190, 10, "Descripción del Problema", 0, 1)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(5)
     
-    # Descripción mejorada con saltos de línea
-    description = data.get('descripcion_mejorada', 'No especificado')
-    pdf.multi_cell(190, 10, description)
+    # Usar descripción mejorada si existe, si no la original
+    descripcion = data.get("descripcion_mejorada", data.get("descripcion_original", ""))
+    
+    pdf.set_font("Arial", "", 11)
+    
+    # Procesar texto largo con múltiples líneas
+    pdf.multi_cell(0, 7, descripcion)
+    pdf.ln(5)
+    
+    # NUEVO: Agregar imágenes si existen
+    if "images" in data and data["images"]:
+        pdf.ln(5)
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(190, 10, "Imágenes Adjuntas", 0, 1)
+        pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+        pdf.ln(5)
+        
+        # Iterar por cada imagen
+        for i, image_url in enumerate(data["images"]):
+            try:
+                # Descargar imagen de S3
+                print(f"Descargando imagen {i+1} desde: {image_url}")
+                response = requests.get(image_url)
+                
+                if response.status_code == 200:
+                    # Guardar temporalmente
+                    temp_img_path = os.path.join(config.TEMP_FOLDER, f"temp_img_{rfi_id}_{i}.jpg")
+                    with open(temp_img_path, "wb") as f:
+                        f.write(response.content)
+                    
+                    # Añadir leyenda
+                    pdf.set_font("Arial", "I", 10)
+                    pdf.cell(0, 10, f"Imagen {i+1}:", 0, 1)
+                    
+                    # Calcular dimensiones para mantenerla dentro de los márgenes
+                    img_width = 180  # ancho máximo (en mm)
+                    img_height = 120  # alto máximo (en mm)
+                    img = Image.open(temp_img_path)
+                    img_w, img_h = img.size
+                    ratio = min(img_width/img_w, img_height/img_h)
+                    final_width = img_w * ratio
+                    final_height = img_h * ratio
+                    pdf.image(temp_img_path, x=15, y=pdf.get_y(), w=final_width, h=final_height)
+
+                    # Añadir espacio después de la imagen - ahora basado en la altura real
+                    pdf.ln(final_height + 10)
+                    
+                    # Eliminar archivo temporal
+                    os.remove(temp_img_path)
+                else:
+                    pdf.set_text_color(255, 0, 0)
+                    pdf.multi_cell(0, 7, f"Error al cargar imagen {i+1}: Error {response.status_code}")
+                    pdf.set_text_color(0, 0, 0)
+            except Exception as e:
+                pdf.set_text_color(255, 0, 0)
+                pdf.multi_cell(0, 7, f"Error al procesar imagen {i+1}: {str(e)}")
+                pdf.set_text_color(0, 0, 0)
+    
+    # Espacio para firmas
+    pdf.ln(10)
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(190, 10, "Firmas", 0, 1)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(20)
+    
+    pdf.line(30, pdf.get_y(), 90, pdf.get_y())
+    pdf.line(110, pdf.get_y(), 170, pdf.get_y())
     
     pdf.ln(5)
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(190, 10, "Espacio para Respuesta:", 0, 1)
-    pdf.set_font("Arial", "", 12)
-    pdf.multi_cell(190, 10, "_" * 50)
+    pdf.set_font("Arial", "", 10)
+    pdf.cell(90, 5, "Solicitante", 0, 0, "C")
+    pdf.cell(90, 5, "Responsable", 0, 1, "C")
     
-    # Guardar el PDF
+    # Generar nombre de archivo
     pdf_filename = f"RFI_{rfi_id}.pdf"
     pdf_path = os.path.join(config.TEMP_FOLDER, pdf_filename)
     
-    pdf.output(pdf_path)
-    pdf_url = upload_file_to_s3(pdf_path, folder="pdfs", object_name=pdf_filename)
+    # Asegurarse de que exista la carpeta temporal
+    os.makedirs(config.TEMP_FOLDER, exist_ok=True)
     
-    return pdf_path, pdf_url
+    # Guardar PDF
+    pdf.output(pdf_path)
+    
+    # Subir a S3 si corresponde
+    if config.S3_UPLOAD_ENABLED:
+        from app.services.s3_service import upload_file_to_s3
+        s3_url = upload_file_to_s3(pdf_path, phone_number=phone_number, file_type="pdf", object_name=pdf_filename)
+        return pdf_path, s3_url
+    else:
+        return pdf_path, f"file://{pdf_path}"
 
 def analyze_plan_image(image_path):
     """

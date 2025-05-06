@@ -26,7 +26,7 @@ def get_config():
         'ANY_SCALE_API_BASE': os.getenv('ANY_SCALE_API_BASE', 'https://api.endpoints.anyscale.com/v1'),
         
         # Mantener compatibilidad con el código que espera OPENAI_API_KEY
-        'OPENAI_API_KEY': os.getenv('ANY_SCALE_API_KEY'),
+        'OPENAI_API_KEY': os.getenv('OPEN_IA_KEY'),
 
         'HUGGINGFACE_API_KEY' : os.getenv('HUGGINGFACE_API_KEY'),
 
@@ -39,6 +39,8 @@ def get_config():
         
         # Configuración de almacenamiento local
         'TEMP_FOLDER': os.path.join(os.getcwd(), 'temp'),
+        'GOOGLE_API_KEY': os.getenv('GOOGLE_API_KEY'),
+
         
         # WhatsApp Business API (para futuro uso)
         'WHATSAPP_API_TOKEN': os.getenv('WHATSAPP_API_TOKEN'),

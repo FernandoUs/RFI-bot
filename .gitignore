@@ -5,6 +5,13 @@ ENV/
 .env/
 .venv/
 */venv/
+rfi-env-312
+.rfi-env-312/
+
+temp
+temp/
+data
+data/
 
 # Archivos de Python
 __pycache__/

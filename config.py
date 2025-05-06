@@ -21,7 +21,7 @@ class Config:
         raise ValueError("AnyScale API Key is not set in the environment variables.")
     
     # Mantener compatibilidad con código que espera OPENAI_API_KEY 
-    OPENAI_API_KEY = ANY_SCALE_API_KEY
+    OPEN_IA_KEY = os.getenv('OPEN_IA_KEY')
 
 
     HUGGINGFACE_API_KEY = os.environ.get("HUGGINGFACE_API_KEY", "")
