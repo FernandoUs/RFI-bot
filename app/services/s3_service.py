@@ -1,12 +1,12 @@
 import boto3
 import os
 import mimetypes
+import time
 from app.utils.config import get_config
 from app.services.media_utils import download_media_from_whatsapp
-import requests
+from PIL import Image, ImageDraw
+import traceback
 import hashlib
-temp_dir = os.path.join(os.getcwd(), 'temp')
-os.makedirs(temp_dir, exist_ok=True)
 
 def hash_phone_number(phone_number):
     """
@@ -81,7 +81,6 @@ def upload_file_to_s3(file_path, phone_number=None, file_type="pdf", object_name
             else:
                 content_type = 'application/octet-stream'
         
-        # Subir archivo
         s3_client.upload_file(
             file_path, 
             'anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85', 
@@ -101,8 +100,17 @@ def upload_file_to_s3(file_path, phone_number=None, file_type="pdf", object_name
             ExpiresIn=604800  # 7 días en segundos
         )
         
+        bucket_name = 'anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85'
+        region = s3_client.meta.region_name if hasattr(s3_client, 'meta') else 'us-west-1'
+        direct_url = f"https://{bucket_name}.s3.{region}.amazonaws.com/{object_path}"
+        
         print(f"Archivo subido correctamente a: {url}")
-        return url
+        
+        return {
+            "presigned_url": url,
+            "direct_url": direct_url
+        }
+
         
     except Exception as e:
         print(f"Error al subir archivo a S3: {e}")
@@ -133,7 +141,6 @@ def save_image_from_url(media_url, phone_number, image_index, rfi_id):
             # Si no se pudo descargar, crear una imagen de marcador de posición
             print("Creando imagen de marcador de posición")
             try:
-                from PIL import Image, ImageDraw, ImageFont
                 img = Image.new('RGB', (800, 600), color=(255, 255, 255))
                 d = ImageDraw.Draw(img)
                 d.text((10, 10), f"Imagen {image_index} no disponible", fill=(0, 0, 0))
@@ -152,6 +159,36 @@ def save_image_from_url(media_url, phone_number, image_index, rfi_id):
         return s3_url
     except Exception as e:
         print(f"Error al procesar imagen desde URL: {e}")
-        import traceback
         print(traceback.format_exc())
         return None
+
+# Add at the end of s3_service.py:
+def test_s3_public_access():
+    """Test if S3 files can be accessed publicly"""
+    import requests
+    test_file = os.path.join(get_config().TEMP_FOLDER, "test_public.txt")
+    
+    # Create test file
+    with open(test_file, "w") as f:
+        f.write("Test public access " + str(time.time()))
+    
+    # Upload with public-read ACL
+    result = upload_file_to_s3(test_file, file_type="text", object_name="test_public.txt")
+    
+    if not result:
+        print("Upload failed")
+        return False
+    
+    # Try both URLs
+    presigned_url = result["presigned_url"]
+    direct_url = result["direct_url"]
+    
+    print(f"Testing presigned URL: {presigned_url}")
+    resp1 = requests.get(presigned_url)
+    print(f"Presigned URL status: {resp1.status_code}")
+    
+    print(f"Testing direct URL: {direct_url}")
+    resp2 = requests.get(direct_url)
+    print(f"Direct URL status: {resp2.status_code}")
+    
+    return resp1.status_code == 200 or resp2.status_code == 200

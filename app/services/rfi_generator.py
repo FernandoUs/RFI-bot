@@ -8,31 +8,13 @@ import uuid
 import time
 import requests
 import threading
+import traceback
 from app.services.s3_service import upload_file_to_s3
 
 class CustomPDF(FPDF2):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Verificar ubicación de fuentes
-        font_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'fonts')
-        os.makedirs(font_path, exist_ok=True)
-        
-        dejavu_regular = os.path.join(font_path, 'DejaVuSansCondensed.ttf')
-        dejavu_bold = os.path.join(font_path, 'DejaVuSansCondensed-Bold.ttf')
-        
-        # Registrar fuentes si existen
-        try:
-            if os.path.exists(dejavu_regular):
-                self.add_font('DejaVu', '', dejavu_regular, uni=True)
-            else:
-                print(f"Advertencia: Fuente DejaVu Regular no encontrada en {dejavu_regular}")
-                
-            if os.path.exists(dejavu_bold):
-                self.add_font('DejaVu', 'B', dejavu_bold, uni=True)
-            else:
-                print(f"Advertencia: Fuente DejaVu Bold no encontrada en {dejavu_bold}")
-        except Exception as e:
-            print(f"Error al cargar fuentes: {e}")
+        # No font customization needed - will use default fonts
 
 def improve_description(description):
     """
@@ -54,7 +36,7 @@ def improve_description(description):
         genai.configure(api_key=google_api_key)
         
         # Crear un modelo
-        model = genai.GenerativeModel('gemini-1.5-pro')
+        model = genai.GenerativeModel('models/gemini-1.5-flash')
         
         # Crear prompt de sistema más específico y acotado
         prompt = f"""Como ingeniero de construcción, mejora ÚNICAMENTE la siguiente descripción técnica para que este dentro de un RFI, 
@@ -99,7 +81,6 @@ def improve_description(description):
         
     except Exception as e:
         print(f"Error al mejorar la descripción: {e}")
-        import traceback
         print(traceback.format_exc())
         return description
 

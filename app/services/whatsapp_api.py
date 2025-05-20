@@ -1,15 +1,16 @@
-import os
 import re
 import requests
 import uuid
+import traceback
+import boto3
+import os
+from urllib.parse import urlparse
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client
 from app.utils.config import get_config
 from app.services.storage import DatabaseManager
-from app.services.rfi_generator import generate_rfi_pdf
 from app.services.s3_service import save_image_from_url
-
-
+from app.services.rfi_generator import improve_description
 # Especialidades disponibles
 ESPECIALIDADES = ["Estructuras", "Arquitectura", "Sanitarias", "Eléctricas"]
 
@@ -209,7 +210,6 @@ def handle_step(session, message, msg_response):
         if len(message.strip()) < 10:
             msg_response.body("Describe el problema con más detalle (mínimo 10 caracteres).")
             return
-        from app.services.rfi_generator import improve_description
         session['data']['descripcion_original'] = message
         try:
             mejorada = improve_description(message)
@@ -289,17 +289,32 @@ def send_step_prompt(session, msg_response):
     
     return msg_response
 
-
 def send_pdf_to_whatsapp(phone_number, pdf_tuple, rfi_id):
     """
     Envía un PDF por WhatsApp usando Twilio
+    
+    Args:
+        phone_number: Número de teléfono destinatario
+        pdf_tuple: Tupla con (pdf_path, pdf_url)
+        rfi_id: Identificador único del RFI
+        
+    Returns:
+        bool: True si el envío fue exitoso, False en caso contrario
     """
     config = get_config()
     
     # Desempaquetar la tupla
-    pdf_path, pdf_url = pdf_tuple
+    pdf_path, pdf_url_data = pdf_tuple
     
-    if pdf_url and pdf_url.startswith("ERROR:"):
+    # Manejar el caso en que pdf_url_data sea un diccionario (nuevo formato)
+    if isinstance(pdf_url_data, dict):
+        # Preferir la URL directa primero ya que podría funcionar mejor con Twilio
+        pdf_url = pdf_url_data.get("direct_url") or pdf_url_data.get("presigned_url")
+    else:
+        # Mantener compatibilidad con el formato antiguo (string)
+        pdf_url = pdf_url_data
+    
+    if pdf_url and isinstance(pdf_url, str) and pdf_url.startswith("ERROR:"):
         pdf_url = None
     
     # Limpiar el número de teléfono para prevenir errores
@@ -319,28 +334,130 @@ def send_pdf_to_whatsapp(phone_number, pdf_tuple, rfi_id):
         )
         print(f"Mensaje introductorio enviado con ID: {intro_message.sid}")
         
-        # Enviar el PDF como documento independiente
         if pdf_url:
             # IMPORTANTE: Verificar contenido del PDF y URL
             print(f"Enviando PDF desde URL: {pdf_url}")
             
             # Verificar que el archivo sea accesible
-            test_response = requests.head(pdf_url)
-            print(f"Verificación de URL: Status {test_response.status_code}, Content-Type: {test_response.headers.get('Content-Type', 'desconocido')}")
+            max_retries = 3
+            current_try = 0
+            valid_url = pdf_url
             
-            # Enviar como media
-            pdf_message = client.messages.create(
-                body="Aquí está tu documento RFI:",
-                from_=f"whatsapp:{config.TWILIO_PHONE_NUMBER}",
-                to=clean_phone,
-                media_url=[pdf_url]
-            )
+            while current_try < max_retries:
+                test_response = requests.head(valid_url, timeout=10)
+                status = test_response.status_code
+                content_type = test_response.headers.get('Content-Type', 'desconocido')
+                
+                print(f"Verificación de URL (intento {current_try+1}/{max_retries}): "
+                      f"Status {status}, Content-Type: {content_type}")
+                
+                # Si la URL es accesible, proceder con el envío
+                if status == 200:
+                    break
+                    
+                # Si obtenemos error 403 o cualquier error, intentamos generar una nueva URL
+                if status != 200:
+                    try:
+                        # Extraer detalles del path para crear una nueva URL presignada
+                        parsed_url = urlparse(valid_url)
+                        path_parts = parsed_url.path.strip('/').split('/')
+                        
+                        # Extraemos los componentes relevantes: bucket y clave del objeto
+                        if len(path_parts) >= 1:
+                            bucket_name = parsed_url.netloc.split('.')[0]
+                            key = '/'.join(path_parts)
+                            
+                            # Generamos una nueva URL presignada con boto3
+                            s3_client = boto3.client('s3')
+                            
+                            # URL con una semana de validez para máxima seguridad
+                            new_url = s3_client.generate_presigned_url(
+                                'get_object',
+                                Params={
+                                    'Bucket': bucket_name,
+                                    'Key': key,
+                                    'ResponseContentType': 'application/pdf',
+                                    'ResponseContentDisposition': f'attachment; filename="RFI-{rfi_id}.pdf"'
+                                },
+                                ExpiresIn=604800  # 7 días en segundos
+                            )
+                            
+                            print(f"Nueva URL generada: {new_url}")
+                            valid_url = new_url
+                            
+                            # Usar inmediatamente la nueva URL en el siguiente intento
+                            current_try += 1
+                            continue
+                        else:
+                            print("No se pudo parsear correctamente la URL")
+                            break
+                    except Exception as e:
+                        print(f"Error al generar nueva URL: {e}")
+                        break
+                
+                current_try += 1
             
-            print(f"Mensaje con PDF adjunto enviado con ID: {pdf_message.sid}")
+        if status != 200 and pdf_path and os.path.exists(pdf_path):
+            print(f"Usando archivo local como respaldo: {pdf_path}")
+            
+            # Subir a un servicio público que genera URLs que Twilio puede acceder
+            public_url = upload_to_public_service(pdf_path)
+            
+            if public_url:
+                print(f"Archivo subido a servicio público: {public_url}")
+                
+                # Usar la URL pública para enviar a través de Twilio
+                try:
+                    pdf_message = client.messages.create(
+                        body=f"Aquí está tu documento RFI #{rfi_id}:",
+                        from_=f"whatsapp:{config.TWILIO_PHONE_NUMBER}",
+                        to=clean_phone,
+                        media_url=[public_url]
+                    )
+                    print(f"Mensaje con PDF adjunto enviado con ID: {pdf_message.sid}")
+                    status = 200  # Marcar como éxito
+                except Exception as e:
+                    print(f"Error al enviar URL pública a Twilio: {e}")
+            else:
+                print("No se pudo obtener una URL pública para el archivo")
+                
+                # Intento de último recurso: usar la URL firmada de S3 original
+                try:
+                    original_presigned_url = pdf_url_data.get("presigned_url", "")
+                    pdf_message = client.messages.create(
+                        body=f"Aquí está tu documento RFI #{rfi_id}:",
+                        from_=f"whatsapp:{config.TWILIO_PHONE_NUMBER}",
+                        to=clean_phone,
+                        media_url=[original_presigned_url]
+                    )
+                    print(f"Mensaje con PDF adjunto usando URL original enviado con ID: {pdf_message.sid}")
+                    status = 200  # Marcar como éxito
+                except Exception as e:
+                    print(f"Error al enviar usando URL original: {e}")
+            
+            # Intentar el envío con la mejor URL que tengamos disponible
+            if status == 200:
+                pdf_message = client.messages.create(
+                    body="Aquí está tu documento RFI:",
+                    from_=f"whatsapp:{config.TWILIO_PHONE_NUMBER}",
+                    to=clean_phone,
+                    media_url=[valid_url]
+                )
+                print(f"Mensaje con PDF adjunto enviado con ID: {pdf_message.sid}")
+            else:
+                # Notificar que hay problemas con el acceso al archivo
+                error_message = client.messages.create(
+                    body=f"Lo sentimos, hubo un problema al acceder al PDF de tu RFI #{rfi_id}. "
+                         f"Por favor, contacta a soporte para obtener ayuda.",
+                    from_=f"whatsapp:{config.TWILIO_PHONE_NUMBER}",
+                    to=clean_phone
+                )
+                print(f"Mensaje de error de acceso enviado con ID: {error_message.sid}")
         else:
             # Error - no hay URL de PDF
             error_message = client.messages.create(
-                body=f"Lo sentimos, hubo un problema al generar el PDF para tu RFI #{rfi_id}. Por favor, intenta nuevamente.",
+                body=f"Lo sentimos, hubo un problema al generar el PDF para tu RFI #{rfi_id}. "
+                     f"Por favor, intenta nuevamente.",
                 from_=f"whatsapp:{config.TWILIO_PHONE_NUMBER}",
                 to=clean_phone
             )
@@ -355,6 +472,40 @@ def send_pdf_to_whatsapp(phone_number, pdf_tuple, rfi_id):
         
         return True
     except Exception as e:
-        import traceback
         print(f"Error al enviar PDF:\n{e}\n{traceback.format_exc()}")
+        
+        # Intentar enviar mensaje de error al usuario
+        try:
+            client = Client(config.TWILIO_ACCOUNT_SID, config.TWILIO_AUTH_TOKEN)
+            client.messages.create(
+                body=f"Lo sentimos, hubo un problema técnico al procesar tu RFI #{rfi_id}. "
+                     f"Nuestro equipo ha sido notificado.",
+                from_=f"whatsapp:{config.TWILIO_PHONE_NUMBER}", 
+                to=clean_phone
+            )
+        except:
+            pass
+            
         return False
+
+# Añadir esta función después de las importaciones existentes
+
+def upload_to_public_service(file_path):
+    """
+    Sube un archivo a un servicio público que genera URLs accesibles para Twilio
+    """
+    try:
+        with open(file_path, 'rb') as file:
+            # Intentar subir a transfer.sh
+            files = {'file': file}
+            response = requests.post('https://transfer.sh/', files=files, timeout=30)
+            
+            if response.status_code == 200:
+                # transfer.sh retorna la URL como texto plano
+                return response.text.strip()
+                
+        # Si llegamos aquí, la subida falló
+        return None
+    except Exception as e:
+        print(f"Error al subir archivo a servicio público: {e}")
+        return None

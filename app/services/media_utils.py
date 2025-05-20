@@ -2,6 +2,10 @@ import re
 import requests
 from twilio.rest import Client
 from app.utils.config import get_config
+from PIL import Image, ImageDraw, ImageFont
+import io
+import traceback
+
 
 def download_media_from_whatsapp(media_url):
     """
@@ -101,7 +105,6 @@ def download_media_from_whatsapp(media_url):
         # FALLBACK: Si todo falla, crear imagen de marcador
         print("Todas las estrategias de descarga fallaron. Creando imagen de marcador.")
         try:
-            from PIL import Image, ImageDraw, ImageFont
             img = Image.new('RGB', (800, 600), color=(255, 255, 255))
             d = ImageDraw.Draw(img)
             
@@ -124,7 +127,6 @@ def download_media_from_whatsapp(media_url):
                 d.text((50, 150), "Ver imagen original en WhatsApp", fill=(0, 0, 255))
             
             # Guardar en memoria
-            import io
             img_bytes = io.BytesIO()
             img.save(img_bytes, format='JPEG')
             img_bytes.seek(0)
@@ -136,18 +138,15 @@ def download_media_from_whatsapp(media_url):
     
     except Exception as e:
         print(f"Error general al descargar multimedia: {e}")
-        import traceback
         print(traceback.format_exc())
         
         # Último intento de crear marcador incluso después de error general
         try:
-            from PIL import Image, ImageDraw
             img = Image.new('RGB', (800, 600), color=(255, 255, 255))
             d = ImageDraw.Draw(img)
             d.text((50, 50), "Imagen no disponible", fill=(0, 0, 0))
             d.text((50, 100), "Error al procesar desde WhatsApp", fill=(255, 0, 0))
             
-            import io
             img_bytes = io.BytesIO()
             img.save(img_bytes, format='JPEG')
             img_bytes.seek(0)
