@@ -1,10 +1,12 @@
 import logging
+import threading
+import uuid
+import traceback
 from flask import request, Response
 from app.services.whatsapp_api import process_incoming_message, send_pdf_to_whatsapp
 from app.services.rfi_generator import generate_rfi_pdf
-from twilio.twiml.messaging_response import MessagingResponse
-import threading
-import uuid
+from app.services.storage import DatabaseManager
+
 
 # Configuración básica de logging
 logger = logging.getLogger(__name__)
@@ -46,72 +48,47 @@ def configure_routes(app):
                 sender, incoming_msg, media_urls=media_urls
             )
 
-            # CAMBIO IMPORTANTE: Manejar la generación y envío del PDF en un hilo separado
-            if session_data.get('send_pdf'):
+            # Verificar si debemos generar un PDF y asegurarnos de iniciar el hilo
+            if session_data and session_data.get('send_pdf') and not session_data.get('pdf_sent'):
+                print(f"DEBUG: Detectado send_pdf=True para RFI #{session_data.get('rfi_id')}")
+                
                 def process_pdf_async():
                     try:
-                        rfi_data = session_data.get('data')
+                        # Crear copia de los datos necesarios para evitar problemas de concurrencia
+                        rfi_data = session_data.get('data', {}).copy()
                         rfi_id = session_data.get('rfi_id', str(uuid.uuid4())[:8])
                         
                         logger.info(f"Iniciando generación de PDF para RFI #{rfi_id} en hilo separado")
                         pdf_tuple = generate_rfi_pdf(rfi_data, rfi_id, phone_number=sender)
-                        success = send_pdf_to_whatsapp(sender, pdf_tuple, rfi_id)
+                        db = DatabaseManager()
+                        clean_sender = sender.replace('whatsapp:', '')
+                        current_session = db.get_session(clean_sender)
                         
-                        # Si send_pdf_to_whatsapp no eliminó la sesión (por algún error)
-                        # y teníamos marcado para eliminar después del PDF
-                        if session_data.get('delete_after_pdf', False):
-                            from app.services.storage import DatabaseManager
-                            db = DatabaseManager()
-                            db.delete_session(sender)
+                        # Verificar que la sesión actual tenga el mismo RFI ID antes de enviar
+                        if current_session and current_session.get('rfi_id') == rfi_id:
+                            success = send_pdf_to_whatsapp(sender, pdf_tuple, rfi_id)
                             
-                        logger.info(f"Proceso de PDF para RFI #{rfi_id} completado. Éxito: {success}")
-                    except Exception as e:
-                        logger.exception(f"Error al procesar el RFI en hilo separado: {e}")
-                        # Enviar mensaje de error
-                        try:
-                            from twilio.rest import Client
-                            from app.utils.config import get_config
-                            config = get_config()
-                            client = Client(config.TWILIO_ACCOUNT_SID, config.TWILIO_AUTH_TOKEN)
-                            
-                            client.messages.create(
-                                body="Hubo un problema al generar tu RFI. Por favor intenta nuevamente.",
-                                from_=f"whatsapp:{config.TWILIO_PHONE_NUMBER}",
-                                to=sender
-                            )
-                        except Exception as e2:
-                            logger.exception(f"Error al enviar mensaje de error: {e2}")
-                
-                # Iniciar un hilo para procesar el PDF en segundo plano
-                pdf_thread = threading.Thread(target=process_pdf_async)
-                pdf_thread.daemon = True  # El hilo terminará cuando el programa principal termine
-                pdf_thread.start()
-                
-                # Añadir mensaje al usuario indicando que el proceso ha comenzado
-                if isinstance(response_text, str):
-                    # Si es una cadena XML, convertirla a objeto MessagingResponse
-                    try:
-                        from lxml import etree
-                        root = etree.fromstring(response_text)
-                        msg_text = root.xpath('//Message/Body/text()')
-                        
-                        resp = MessagingResponse()
-                        msg = resp.message()
-                        if msg_text and msg_text[0]:
-                            msg.body(msg_text[0] + "\n\nEstamos generando tu RFI. Recibirás el PDF en breve.")
+                            if success:
+                                # Actualizar la sesión para marcar que el PDF fue enviado
+                                # Y TAMBIÉN desactivar send_pdf para evitar reenvíos
+                                current_session['pdf_sent'] = True
+                                current_session['send_pdf'] = False
+                                db.save_session(clean_sender, current_session)
+                                logger.info(f"Proceso de PDF para RFI #{rfi_id} completado. Éxito: {success}")
                         else:
-                            msg.body("Estamos generando tu RFI. Recibirás el PDF en breve.")
-                        
-                        response_text = str(resp)
-                    except:
-                        # Si hay error al parsear, dejar como está
-                        pass
-                else:
-                    # Es un objeto MessagingResponse
-                    for msg in response_text.messages:
-                        body = msg.body
-                        msg.body = body + "\n\nEstamos generando tu RFI. Recibirás el PDF en breve."
+                            # Si la sesión ha cambiado o ha sido reiniciada, no enviar el PDF
+                            logger.info(f"No se envía el PDF para RFI #{rfi_id} porque la sesión ha cambiado")
+                            
+                    except Exception as e:
+                        logger.error(f"Error en proceso asíncrono de PDF: {e}")
+                        logger.error(traceback.format_exc())
             
+                # AQUÍ ESTÁ EL PROBLEMA: Necesitamos iniciar el hilo
+                print(f"DEBUG: Iniciando hilo para generar PDF de RFI #{session_data.get('rfi_id')}")
+                thread = threading.Thread(target=process_pdf_async)
+                thread.daemon = True
+                thread.start()
+        
             # Devolver respuesta inmediatamente sin esperar la generación del PDF
             if isinstance(response_text, str):
                 return Response(response_text, mimetype="text/xml")

@@ -2,11 +2,12 @@ import boto3
 import os
 import mimetypes
 import time
+import traceback
+import hashlib
+import requests
 from app.utils.config import get_config
 from app.services.media_utils import download_media_from_whatsapp
 from PIL import Image, ImageDraw
-import traceback
-import hashlib
 
 def hash_phone_number(phone_number):
     """
@@ -90,19 +91,21 @@ def upload_file_to_s3(file_path, phone_number=None, file_type="pdf", object_name
             }
         )
         
-        # Generar URL con tiempo de expiración más largo (1 semana)
+        bucket_name = 'anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85'
+        fixed_region = 'us-west-1'  # Esta es la región que parece funcionar mejor
+
+        # URL con tiempo de expiración
         url = s3_client.generate_presigned_url(
             'get_object',
             Params={
-                'Bucket': 'anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85',
+                'Bucket': bucket_name,
                 'Key': object_path
             },
             ExpiresIn=604800  # 7 días en segundos
         )
-        
-        bucket_name = 'anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85'
-        region = s3_client.meta.region_name if hasattr(s3_client, 'meta') else 'us-west-1'
-        direct_url = f"https://{bucket_name}.s3.{region}.amazonaws.com/{object_path}"
+
+        # URL directa con la misma región consistente
+        direct_url = f"https://{bucket_name}.s3.{fixed_region}.amazonaws.com/{object_path}"
         
         print(f"Archivo subido correctamente a: {url}")
         
@@ -121,6 +124,8 @@ def save_image_from_url(media_url, phone_number, image_index, rfi_id):
     Descarga una imagen desde una URL y la sube a S3
     """
     config = get_config()
+    temp_path = None
+    
     try:
         # Intentar descargar la imagen
         image_content = download_media_from_whatsapp(media_url)
@@ -129,7 +134,12 @@ def save_image_from_url(media_url, phone_number, image_index, rfi_id):
         filename = f"image_{rfi_id}_{image_index}.jpg"
         temp_path = os.path.join(config.TEMP_FOLDER, filename)
         
-        # Crear directorio si no existe
+        # También guardar una copia en static/images
+        static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "static", "images")
+        os.makedirs(static_dir, exist_ok=True)
+        static_path = os.path.join(static_dir, filename)
+        
+        # Crear directorio temporal si no existe
         os.makedirs(config.TEMP_FOLDER, exist_ok=True)
         
         if image_content:
@@ -137,6 +147,11 @@ def save_image_from_url(media_url, phone_number, image_index, rfi_id):
             with open(temp_path, "wb") as f:
                 f.write(image_content)
             print(f"Imagen guardada en: {temp_path}")
+            
+            # Guardar también en static
+            with open(static_path, "wb") as f:
+                f.write(image_content)
+            print(f"Copia de imagen guardada en: {static_path}")
         else:
             # Si no se pudo descargar, crear una imagen de marcador de posición
             print("Creando imagen de marcador de posición")
@@ -161,11 +176,17 @@ def save_image_from_url(media_url, phone_number, image_index, rfi_id):
         print(f"Error al procesar imagen desde URL: {e}")
         print(traceback.format_exc())
         return None
+    finally: 
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+                print(f"Archivo temporal eliminado: {temp_path}")
+            except Exception as e:
+                print(f"Error al eliminar archivo temporal: {e}")
 
 # Add at the end of s3_service.py:
 def test_s3_public_access():
     """Test if S3 files can be accessed publicly"""
-    import requests
     test_file = os.path.join(get_config().TEMP_FOLDER, "test_public.txt")
     
     # Create test file

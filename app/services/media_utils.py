@@ -1,10 +1,10 @@
 import re
 import requests
+import io
+import traceback
 from twilio.rest import Client
 from app.utils.config import get_config
 from PIL import Image, ImageDraw, ImageFont
-import io
-import traceback
 
 
 def download_media_from_whatsapp(media_url):
@@ -49,15 +49,13 @@ def download_media_from_whatsapp(media_url):
             
             print(f"URL analizada: Account SID={url_account_sid}, Message SID={message_sid}, Media SID={media_sid}")
             
-            # IMPORTANTE: Probar con el SID original primero, luego con el de la URL
             account_sids_to_try = [account_sid]
             
-            # Añadir el SID de la URL si es diferente y parece válido
             if url_account_sid.startswith('AC') and url_account_sid != account_sid:
                 print(f"También probaremos con el SID de la URL: {url_account_sid}")
                 account_sids_to_try.append(url_account_sid)
             
-            # Probar con cada SID
+
             for sid_to_try in account_sids_to_try:
                 try:
                     print(f"Intentando con SID: {sid_to_try}")

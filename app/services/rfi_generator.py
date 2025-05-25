@@ -1,14 +1,13 @@
 import os
-from fpdf import FPDF as FPDF2
-from datetime import datetime
-from app.utils.config import get_config
 import google.generativeai as genai
-from PIL import Image
-import uuid
 import time
 import requests
 import threading
 import traceback
+from fpdf import FPDF as FPDF2
+from datetime import datetime
+from app.utils.config import get_config as get_config_func
+from app.utils.config import get_config
 from app.services.s3_service import upload_file_to_s3
 
 class CustomPDF(FPDF2):
@@ -86,10 +85,7 @@ def improve_description(description):
 
 
 def generate_rfi_pdf(data, rfi_id, phone_number=None):
-    """
-    Genera un PDF con formato RFI y los datos recopilados, similar al formato estándar de la industria
-    """
-    config = get_config()
+    config = get_config_func()  # Esto funciona porque get_config está importado al inicio del archivo
     
     # Crear objeto PDF (orientación horizontal para mayor espacio)
     pdf = CustomPDF()
@@ -212,48 +208,205 @@ def generate_rfi_pdf(data, rfi_id, phone_number=None):
         
         # Definir layout para imágenes
         num_images = len(data["images"])
-        if num_images <= 3:
+        
+        # SOLUCIÓN: Implementar múltiples métodos para descargar imágenes
+        if num_images > 0:
             # Mostrar imágenes en una fila
             img_width = 190 / num_images - 10
-            for i, image_url in enumerate(data["images"]):
-                try:
-                    # Descargar imagen
-                    response = requests.get(image_url)
-                    
-                    if response.status_code == 200:
-                        # Guardar temporalmente
-                        temp_file_id = str(uuid.uuid4())[:8]
-                        temp_img_path = os.path.join(config.TEMP_FOLDER, f"temp_image_{temp_file_id}.jpg")
-                        with open(temp_img_path, "wb") as f:
-                            f.write(response.content)
-                        
-                        temp_files.append(temp_img_path)
-                        
-                        # Calcular dimensiones
-                        img = Image.open(temp_img_path)
-                        img_w, img_h = img.size
-                        ratio = min(img_width/img_w, 50/img_h)
-                        final_width = img_w * ratio
-                        final_height = img_h * ratio
-                        
-                        # Posicionar imagen
-                        x_position = 10 + i * (img_width + 10)
-                        pdf.image(temp_img_path, x=x_position, y=pdf.get_y(), w=final_width, h=final_height)
-                except Exception as e:
-                    print(f"Error al procesar imagen {i+1}: {e}")
             
-            # Movernos abajo de las imágenes
-            pdf.ln(60)  # Espacio para imágenes
-        else:
-            # Mostrar imágenes en grid si hay más de 3
-            for i, image_url in enumerate(data["images"][:6]):  # Limitamos a 6 imágenes máximo
+            # Guardar posición Y actual para mantener alineación
+            current_y = pdf.get_y()
+            max_height = 0
+            
+            for i, image_data in enumerate(data["images"]):
+                print(f"Procesando imagen {i+1} de {num_images}")
+                success = False
+                image_content = None
+                
                 try:
-                    # Lógica similar a la anterior, pero en grid 2x3
-                    # ... código para procesar imágenes ...
-                    pass
+                    # MÉTODO 1: Extraer URL desde el diccionario o string
+                    urls_to_try = []
+                    
+                    if isinstance(image_data, dict):
+                        # Primero intentar con URL presignada (más permisos)
+                        if "presigned_url" in image_data:
+                            urls_to_try.append(("presigned_url", image_data["presigned_url"]))
+                        
+                        # Luego con URL directa
+                        if "direct_url" in image_data:
+                            # Intentar con diferentes variantes de región
+                            direct_url = image_data["direct_url"]
+                            urls_to_try.append(("direct_url", direct_url))
+                            
+                            # Probar con variaciones de URL
+                            if "us-west-1" in direct_url:
+                                alt_url = direct_url.replace("us-west-1", "us-east-1")
+                                urls_to_try.append(("us-east-1", alt_url))
+                            elif "us-east-1" in direct_url:
+                                alt_url = direct_url.replace("us-east-1", "us-west-1")
+                                urls_to_try.append(("us-west-1", alt_url))
+                    elif isinstance(image_data, str):
+                        urls_to_try.append(("string_url", image_data))
+                    
+                    # Intentar con cada URL disponible
+                    for url_type, url in urls_to_try:
+                        if success:
+                            break
+                            
+                        try:
+                            print(f"Intentando descarga con {url_type}: {url}")
+                            
+                            # Configurar una sesión con timeout más largo
+                            session = requests.Session()
+                            response = session.get(url, timeout=30)
+                            
+                            if response.status_code == 200:
+                                print(f"Descarga exitosa con {url_type}")
+                                image_content = response.content
+                                success = True
+                                break
+                            else:
+                                print(f"Error con {url_type}: Status {response.status_code}")
+                        except Exception as e:
+                            print(f"Error al descargar con {url_type}: {e}")
+                    
+                    # MÉTODO 2: Intentar con boto3 directamente si falla el método anterior
+                    if not success:
+                        try:
+                            import boto3
+                            from app.utils.config import get_config
+                            config = get_config()
+                            
+                            # Extraer bucket y key de la primera URL válida
+                            for _, url in urls_to_try:
+                                try:
+                                    # Parsear URL para obtener bucket y key
+                                    from urllib.parse import urlparse
+                                    parsed = urlparse(url)
+                                    path = parsed.path.lstrip('/')
+                                    
+                                    # Configurar cliente S3 con credenciales explícitas
+                                    s3_client = boto3.client(
+                                        's3',
+                                        aws_access_key_id=config.AWS_ACCESS_KEY,
+                                        aws_secret_access_key=config.AWS_SECRET_KEY,
+                                        region_name='us-west-1'  # Especificar región
+                                    )
+                                    
+                                    # Determinar bucket_name y object_key
+                                    if '.s3.' in parsed.netloc:
+                                        bucket_name = parsed.netloc.split('.')[0]
+                                        object_key = path
+                                    else:
+                                        parts = path.split('/', 1)
+                                        if len(parts) >= 2:
+                                            bucket_name, object_key = parts
+                                        else:
+                                            continue
+                                    
+                                    print(f"Intentando con boto3: bucket={bucket_name}, key={object_key}")
+                                    
+                                    # Descargar a un archivo temporal
+                                    temp_file_path = os.path.join(config.TEMP_FOLDER, f"temp_img_{rfi_id}_{i}.jpg")
+                                    s3_client.download_file(bucket_name, object_key, temp_file_path)
+                                    
+                                    # Leer como bytes
+                                    with open(temp_file_path, 'rb') as f:
+                                        image_content = f.read()
+                                    
+                                    os.unlink(temp_file_path)  # Eliminar archivo temporal
+                                    success = True
+                                    print(f"Descarga exitosa con boto3: {len(image_content)} bytes")
+                                    break
+                                except Exception as s3_error:
+                                    print(f"Error con boto3 para {url}: {s3_error}")
+                        except Exception as boto3_error:
+                            print(f"Error general con boto3: {boto3_error}")
+                    
+                    # MÉTODO 3: Usar la copia local guardada si existe
+                    if not success:
+                        try:
+                            local_path = os.path.join(
+                                os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
+                                "static", "images", f"image_{rfi_id}_{i+1}.jpg"
+                            )
+                            
+                            if os.path.exists(local_path):
+                                print(f"Usando imagen local: {local_path}")
+                                with open(local_path, 'rb') as f:
+                                    image_content = f.read()
+                                success = True
+                        except Exception as local_error:
+                            print(f"Error al usar imagen local: {local_error}")
+                    
+                    # Si no hay imagen, crear una imagen de marcador
+                    if not success:
+                        print("Creando imagen de marcador para el PDF")
+                        from PIL import Image, ImageDraw, ImageFont
+                        import io
+                        
+                        # Crear imagen con texto
+                        img = Image.new('RGB', (800, 600), color=(240, 240, 240))
+                        draw = ImageDraw.Draw(img)
+                        
+                        # Añadir texto indicando el problema
+                        draw.text((20, 20), f"Imagen {i+1}", fill=(0, 0, 0))
+                        draw.text((20, 60), "No se pudo cargar la imagen", fill=(255, 0, 0))
+                        draw.text((20, 100), "Verifique la imagen original en WhatsApp", fill=(0, 0, 255))
+                        
+                        # Convertir a bytes
+                        img_byte_array = io.BytesIO()
+                        img.save(img_byte_array, format='JPEG')
+                        image_content = img_byte_array.getvalue()
+                        success = True
+                    
+                    # Procesar la imagen
+                    if success and image_content:
+                        # Guardar temporalmente
+                        temp_file = os.path.join(config.TEMP_FOLDER, f"temp_img_{rfi_id}_{i}.jpg")
+                        with open(temp_file, 'wb') as f:
+                            f.write(image_content)
+                        temp_files.append(temp_file)
+                        
+                        # Calcular dimensiones para el PDF
+                        from PIL import Image
+                        img = Image.open(temp_file)
+                        img_w, img_h = img.size
+                        
+                        # Limitar altura máxima a 60% de la página
+                        max_h = 120  # Altura máxima en mm
+                        
+                        # Mantener relación de aspecto
+                        ratio = min(img_width/img_w, max_h/img_h)
+                        final_w = img_w * ratio
+                        final_h = img_h * ratio
+                        
+                        # Actualizar altura máxima para alineación
+                        if final_h > max_height:
+                            max_height = final_h
+                        
+                        # Posicionar imagen en PDF
+                        x_pos = 10 + i * (img_width + 10)
+                        pdf.image(temp_file, x=x_pos, y=current_y, w=final_w, h=final_h)
+                        
+                        print(f"Imagen {i+1} añadida al PDF correctamente")
+                
                 except Exception as e:
-                    print(f"Error al procesar imagen {i+1}: {e}")
-    
+                    print(f"Error general al procesar imagen {i+1}: {e}")
+                    import traceback
+                    print(traceback.format_exc())
+            
+            # Avanzar después de todas las imágenes
+            pdf.ln(max_height + 20)  # Espacio adicional después de las imágenes
+        
+        # Limpiar archivos temporales al finalizar
+        for temp_file in temp_files:
+            try:
+                if os.path.exists(temp_file):
+                    os.unlink(temp_file)
+            except:
+                pass
+
     # Sección para firmas
     pdf.ln(5)
     pdf.set_fill_color(*header_bg_color)

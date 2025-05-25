@@ -1,5 +1,4 @@
 import os
-import sys
 from types import SimpleNamespace
 from dotenv import load_dotenv
 
