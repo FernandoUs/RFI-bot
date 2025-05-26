@@ -38,11 +38,12 @@ def improve_description(description):
         model = genai.GenerativeModel('models/gemini-1.5-flash')
         
         # Crear prompt de sistema más específico y acotado
-        prompt = f"""Como ingeniero de construcción, mejora ÚNICAMENTE la siguiente descripción técnica para que este dentro de un RFI, 
+        prompt = f"""Como ingeniero de construcción, mejora ÚNICAMENTE la siguiente descripción técnica del PROBLEMA para que este dentro de un RFI, 
         haciéndola más profesional y un pocoo más detallada pero no tan extensa. NO generes un RFI completo, NO agregues campos adicionales,
-        NO incluyas "Detalles Específicos", "Adjuntos", ni otros elementos de formato, NO inventes ejes ni datos adicionales.
+        NO incluyas "Detalles Específicos", "Adjuntos", ni otros elementos de formato, NO inventes ejes ni datos adicionales. NO agregues ningun requerimiento o relacionado a eso
+        solamente centrate en la problematica
         
-        SOLO mejora el texto de la descripción original manteniendo su extensión similar (máximo 1-2 párrafos).
+        SOLO mejora el texto de la descripción del problema original manteniendo su extensión similar (máximo 1-2 párrafos).
         NO incluyas "Asunto:", "Descripción:", ni otras etiquetas o títulos.
         
         Descripción original:
@@ -171,39 +172,77 @@ def generate_rfi_pdf(data, rfi_id, phone_number=None):
     pdf.cell(20, 7, "Fecha:", 1, 0)
     pdf.set_font("Arial", "B", 9)
     pdf.cell(30, 7, datetime.now().strftime('%d/%m/%Y'), 1, 1)
-    
-    # NUEVO CAMPO - Fecha de respuesta requerida
+      # Fecha de respuesta requerida
     pdf.set_font("Arial", "", 9)
     pdf.cell(70, 7, "Fecha de Respuesta Requerida:", 1, 0)
     pdf.set_font("Arial", "B", 9)
     pdf.cell(120, 7, data.get("fecha_respuesta", ""), 1, 1)
+
+    # Documentos de referencia
+    if 'documentos_referencia' in data and data['documentos_referencia']:
+        pdf.set_fill_color(240, 240, 240)  # Color gris muy claro para subtítulos
+        pdf.set_font("Arial", "B", 9)
+        pdf.cell(190, 7, "Documentos de Referencia:", 1, 1, "L", True)
+        pdf.set_font("Arial", "", 9)
+        
+        # Numerar los documentos de referencia
+        for i, doc in enumerate(data['documentos_referencia'], 1):
+            pdf.set_font("Arial", "", 9)
+            pdf.cell(10, 7, f"{i}.", 1, 0, "C")
+            pdf.set_font("Arial", "B", 9)
+            pdf.cell(180, 7, doc, 1, 1)
+    
+    pdf.set_font("Arial", "", 9)
+    pdf.cell(70, 7, "Sector del problema:", 1, 0)
+    pdf.set_font("Arial", "B", 9)
+    pdf.cell(120, 7, data.get("sector", ""), 1, 1)
     
     pdf.set_font("Arial", "", 9)
     pdf.cell(70, 7, "Disciplina:", 1, 0)
     pdf.set_font("Arial", "B", 9)
     pdf.cell(120, 7, data.get("especialidad", "OBRAS CIVILES"), 1, 1)
     
+    # Verificar si hay incompatibilidad con otra especialidad
+    if data.get("incompatibilidad") == True:
+        pdf.set_font("Arial", "", 9)
+        pdf.cell(70, 7, "Incompatibilidad con:", 1, 0)
+        pdf.set_font("Arial", "B", 9)
+        pdf.cell(120, 7, data.get("incompatibilidad_con", ""), 1, 1)
+    
     pdf.set_font("Arial", "", 9)
     pdf.cell(70, 7, "Asunto:", 1, 0)
     pdf.set_font("Arial", "B", 9)
     # Fixed multi_cell call to be compatible with fpdf2
     pdf.multi_cell(w=120, h=7, txt=data.get("asunto", "SOLICITUD PLANOS DE INGENIERÍA MODIFICADOS"), border=1, align="L")
-    
     # Sección de detalles de la solicitud
     pdf.ln(5)
     pdf.set_fill_color(*header_bg_color)
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Arial", "B", 10)
-    pdf.cell(190, 8, "Información Requerida (indicar detalle):", 1, 1, "L", True)
+    pdf.cell(190, 8, "Información Requerida:", 1, 1, "L", True)
     pdf.set_text_color(0, 0, 0)
     
     # Descripción del problema
-    pdf.set_font("Arial", "B", 9)
     # Usar descripción mejorada si existe, si no la original
     descripcion = data.get("descripcion_mejorada", data.get("descripcion_original", ""))
     
-    # Marco para la descripción - Update the multi_cell parameters
+    # Dividir en dos secciones: Problemática y Requerimientos
+    pdf.set_fill_color(240, 240, 240)  # Color gris muy claro para subtítulos
+    pdf.set_font("Arial", "B", 9)
+    pdf.cell(190, 7, "Problemática:", 1, 1, "L", True)
+    
+    # Marco para la descripción del problema
+    pdf.set_font("Arial", "", 9)
     pdf.multi_cell(w=190, h=7, txt=descripcion, border=1, align="L")
+    
+    # Sección de requerimientos
+    pdf.ln(3)
+    pdf.set_fill_color(240, 240, 240)  # Color gris muy claro para subtítulos
+    pdf.set_font("Arial", "B", 9)
+    pdf.cell(190, 7, "Requerimientos:", 1, 1, "L", True)
+      # Marco para los requerimientos
+    pdf.set_font("Arial", "", 9)
+    pdf.multi_cell(w=190, h=7, txt=generate_requeriment(data.get("descripcion_mejorada")), border=1, align="L")
     
     # Sección de imágenes
     if "images" in data and data["images"]:
@@ -531,6 +570,75 @@ def analyze_plan_image(image_path):
     # Podría usar OpenAI Vision API o bibliotecas como OpenCV
     pass
 
+def generate_requeriment(description):
+    """
+    Genera un requerimiento técnico basado en la descripción proporcionada
+    usando Google Gemini API o un algoritmo de respaldo si falla
+    
+    Args:
+        description: La descripción mejorada del problema
+        
+    Returns:
+        str: Un requerimiento técnico conciso y relevante
+    """
+    config = get_config()
+    
+    try:
+        # Verificar si existe la API key de Google
+        google_api_key = config.GOOGLE_API_KEY
+        
+        if not google_api_key:
+            print("ERROR: No se ha configurado la API key de Google")
+            return "REQUIERE REVISIÓN TÉCNICA"
+        
+        print("Usando Gemini API para generar requerimiento...")
+        
+        # Configurar la API
+        genai.configure(api_key=google_api_key)
+        
+        # Crear un modelo
+        model = genai.GenerativeModel('models/gemini-1.5-flash')
+        
+        # Crear prompt específico para generar el requerimiento
+        prompt = f"""Genera un requerimiento técnico conciso y claro para un Request For Information (RFI) 
+        en un proyecto de construcción basado en esta descripción. El requerimiento debe ser específico, 
+        relacionado a la descripción, y no debe incluir "Requerimiento:", "Descripción:", ni otras etiquetas o títulos.
+        
+        Descripción: {description}
+        
+        Requerimiento:"""
+        
+        # Generar respuesta
+        response = model.generate_content(prompt)
+        
+        # Verificar si hay respuesta válida
+        if response.text:
+            requeriment = response.text.strip()
+            
+            # Limpiar el texto de posibles marcadores o prefijos
+            requeriment = requeriment.replace("Requerimiento:", "").replace(":", "").strip()
+            
+            # Asegurar formato de capitalización adecuado (primera letra mayúscula)
+            if requeriment and len(requeriment) > 1:
+                # Primera letra mayúscula
+                requeriment = requeriment[0].upper() + requeriment[1:]
+            
+            # Ya no recortamos el requerimiento para mostrarlo completo en el PDF
+            print(f"Requerimiento generado: {requeriment}")
+            return requeriment
+        else:
+            print("No se obtuvo respuesta al generar el requerimiento")
+            return "REQUIERE REVISIÓN TÉCNICA"
+    except Exception as e:
+        print(f"Error al generar requerimiento: {e}")
+        words = description.split()
+        if len(words) >= 5:
+            backup_requeriment = " ".join(words[:5]).upper() + "..."
+            return backup_requeriment
+        else:
+            return "REQUIERE REVISIÓN TÉCNICA"
+
+
 def generate_subject(description):
     """
     Genera un asunto relevante basado en la descripción proporcionada
@@ -559,11 +667,11 @@ def generate_subject(description):
         
         # Crear un modelo
         model = genai.GenerativeModel('models/gemini-1.5-flash')
-        
-        # Crear prompt específico para generar el asunto
-        prompt = f"""Genera un asunto técnico conciso (máximo 10 palabras) para un Request For Information (RFI) 
-        en un proyecto de construcción basado en esta descripción. El asunto debe ser específico 
-        pero breve, en mayúsculas, sin signos de interrogación y sin palabras como "solicitud" o "RFI".
+          # Crear prompt específico para generar el asunto
+        prompt = f"""Genera un asunto técnico conciso para un Request For Information (RFI) 
+        en un proyecto de construcción basado en esta descripción. El asunto debe tener formato
+        de oración natural, que sea corto de maximo 10 palabras y relacionados a la descripción.
+        NO incluyas "Asunto:", "Descripción:" "RFI Verificación", ni otras etiquetas o títulos.
         
         Descripción: {description}
         
@@ -571,13 +679,17 @@ def generate_subject(description):
         
         # Generar respuesta
         response = model.generate_content(prompt)
-        
-        # Verificar si hay respuesta válida
+          # Verificar si hay respuesta válida
         if response.text:
-            subject = response.text.strip().upper()
+            subject = response.text.strip()
             
-            # Limitar longitud y eliminar posibles prefijos/sufijos
-            subject = subject.replace("ASUNTO:", "").replace(":", "")
+            # Limpiar el texto de posibles marcadores o prefijos
+            subject = subject.replace("Asunto:", "").replace(":", "").strip()
+            
+            # Asegurar formato de capitalización adecuado (primera letra mayúscula)
+            if subject and len(subject) > 1:
+                # Primera letra mayúscula
+                subject = subject[0].upper() + subject[1:]
             
             # Si el asunto es demasiado largo, recortarlo
             if len(subject) > 70:

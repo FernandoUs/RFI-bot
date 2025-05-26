@@ -240,11 +240,50 @@ def handle_step(session, message, msg_response):
         # Validar formato de fecha DD/MM/AA o DD/MM/AAAA
         if re.match(r'^(\d{1,2})/(\d{1,2})/(\d{2}|\d{4})$', message.strip()):
             session['data']['fecha_respuesta'] = message.strip()
-            session['step'] = 2
+            session['step'] = 1.3
             send_step_prompt(session, msg_response)
             return
         else:
             msg_response.body("Por favor, ingresa la fecha en formato DD/MM/AA o DD/MM/AAAA.")
+            return
+    
+    # NUEVO PASO 1.3: Solicitar documentos de referencia
+    elif step == 1.3:
+        try:
+            # Validar número de documentos (0-3)
+            num_docs = int(message.strip())
+            if 0 <= num_docs <= 3:
+                session['data']['num_documentos_referencia'] = num_docs
+                if num_docs == 0:
+                    # Si no hay documentos, pasar al siguiente paso
+                    session['step'] = 2
+                    send_step_prompt(session, msg_response)
+                else:
+                    # Si hay documentos, pedir que los ingrese
+                    session['step'] = 1.4
+                    msg_response.body(f"Por favor, ingresa los {num_docs} documentos de referencia separados por coma. Por ejemplo: 'Plano E-01, Memo 132, Especificación técnica'")
+                return
+            else:
+                msg_response.body("Por favor, ingresa un número entre 0 y 3.")
+                return
+        except ValueError:
+            msg_response.body("Por favor, ingresa un número válido entre 0 y 3.")
+            return
+    
+    # NUEVO PASO 1.4: Recibir documentos de referencia
+    elif step == 1.4:
+        if len(message.strip()) > 0:
+            # Guardar los documentos de referencia
+            docs = [doc.strip() for doc in message.split(',') if doc.strip()]
+            # Limitar a la cantidad especificada previamente
+            max_docs = session['data'].get('num_documentos_referencia', 3)
+            docs = docs[:max_docs]
+            session['data']['documentos_referencia'] = docs
+            session['step'] = 2
+            send_step_prompt(session, msg_response)
+            return
+        else:
+            msg_response.body("Por favor, ingresa al menos un documento de referencia.")
             return
             
     # PASO 2 (antiguo paso 1): Elegir especialidad
@@ -255,7 +294,7 @@ def handle_step(session, message, msg_response):
             session['step'] = 3
             send_step_prompt(session, msg_response)
             return
-        elif message.startswith("5:"):
+        elif message.startswith("5"):
             otra = message[2:].strip()
             if otra:
                 session['data']['especialidad'] = otra
@@ -395,6 +434,13 @@ def send_step_prompt(session, msg_response):
     elif step == 1.2:
         msg_response.body("¿Para cuándo necesitas la respuesta del RFI? (Formato: DD/MM/AA)")
     
+    elif step == 1.3:
+        msg_response.body("¿Cuántos documentos de referencia deseas incluir en el RFI? (Ingresa un número del 0 al 3)")
+    
+    elif step == 1.4:
+        num_docs = session['data'].get('num_documentos_referencia', 0)
+        msg_response.body(f"Por favor, ingresa los {num_docs} documentos de referencia separados por coma. Por ejemplo: 'Plano E-01, Memo 132, Especificación técnica'")
+    
     # PASOS ACTUALIZADOS CON NUEVA NUMERACIÓN
     elif step == 2:
         msg_response.body("¿Cuál es tu especialidad?\n1. Estructuras\n2. Arquitectura\n3. Sanitarias\n4. Eléctricas\n5: Otra (especificar)")
@@ -417,7 +463,7 @@ def send_step_prompt(session, msg_response):
         msg_response.body("¿En qué piso se encontró el problema? (Ingresa un número)\n\nEscribe 'volver' para regresar a la pregunta anterior.")
     
     elif step == 6:
-        msg_response.body("Según el plano, ¿en qué sector se encuentra el problema?\n\nEscribe 'volver' para regresar a la pregunta anterior.")
+        msg_response.body("Según el plano, describe la ubicación del problema detectado\n\nEscribe 'volver' para regresar a la pregunta anterior.")
     
     elif step == 7:
         msg_response.body("Por favor, describe el problema que has encontrado con el mayor detalle posible:\n\nEscribe 'volver' para regresar a la pregunta anterior.")
