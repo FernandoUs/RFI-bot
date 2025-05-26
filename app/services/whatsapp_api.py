@@ -133,7 +133,7 @@ def process_incoming_message(sender, message, media_urls=None):
             return str(resp), session
     
     # Manejar el paso de envío de imágenes (ahora con mejor detección)
-    if session['step'] == 7.6:
+    if session['step'] == 8.6:
         if media_urls and len(media_urls) > 0 and media_urls[0]:
             print(f"Procesando {len(media_urls)} imágenes recibidas")
             
@@ -169,12 +169,12 @@ def process_incoming_message(sender, message, media_urls=None):
             
             if s3_image_urls:
                 session['data']['images'].extend(s3_image_urls)
-                session['step'] = 8
+                session['step'] = 9
                 session['send_pdf'] = True
                 msg.body("Imagen recibida correctamente. Generando archivo RFI con la imagen...")
             else:
                 msg.body("Hubo problemas al procesar la imagen. Generando RFI sin imágenes...")
-                session['step'] = 8
+                session['step'] = 9
                 session['send_pdf'] = True
             
             db.save_session(clean_sender, session)
@@ -196,7 +196,7 @@ def process_incoming_message(sender, message, media_urls=None):
     handle_step(session, message, msg)
     
     # Si es necesario enviar un PDF, indicarlo en la sesión
-    if session.get('step') == 8 and not session.get('send_pdf'):
+    if session.get('step') == 9 and not session.get('send_pdf'):
         print(f"Preparando para generar PDF para RFI #{session['rfi_id']}")
         session['send_pdf'] = True
         session['delete_after_pdf'] = False  # No borrar la sesión para poder verificar el estado
@@ -211,18 +211,55 @@ def process_incoming_message(sender, message, media_urls=None):
 def handle_step(session, message, msg_response):
     step = session.get('step', 1)
 
+    # NUEVO PASO 1: Solicitar nombre del usuario
     if step == 1:
+        # Validar que el nombre tenga al menos 3 caracteres
+        if len(message.strip()) >= 3:
+            session['data']['nombre_usuario'] = message.strip()
+            session['step'] = 1.1
+            send_step_prompt(session, msg_response)
+            return
+        else:
+            msg_response.body("Por favor, ingresa tu nombre completo (mínimo 3 caracteres).")
+            return
+            
+    # NUEVO PASO 1.1: Solicitar cargo del usuario
+    elif step == 1.1:
+        # Validar que el cargo tenga al menos 3 caracteres
+        if len(message.strip()) >= 3:
+            session['data']['cargo_usuario'] = message.strip()
+            session['step'] = 1.2
+            send_step_prompt(session, msg_response)
+            return
+        else:
+            msg_response.body("Por favor, ingresa tu cargo (mínimo 3 caracteres).")
+            return
+            
+    # NUEVO PASO 1.2: Solicitar fecha de respuesta requerida
+    elif step == 1.2:
+        # Validar formato de fecha DD/MM/AA o DD/MM/AAAA
+        if re.match(r'^(\d{1,2})/(\d{1,2})/(\d{2}|\d{4})$', message.strip()):
+            session['data']['fecha_respuesta'] = message.strip()
+            session['step'] = 2
+            send_step_prompt(session, msg_response)
+            return
+        else:
+            msg_response.body("Por favor, ingresa la fecha en formato DD/MM/AA o DD/MM/AAAA.")
+            return
+            
+    # PASO 2 (antiguo paso 1): Elegir especialidad
+    elif step == 2:
         # Elegir especialidad
         if message in map(str, range(1, 5)):
             session['data']['especialidad'] = ESPECIALIDADES[int(message) - 1]
-            session['step'] = 2
+            session['step'] = 3
             send_step_prompt(session, msg_response)
             return
         elif message.startswith("5:"):
             otra = message[2:].strip()
             if otra:
                 session['data']['especialidad'] = otra
-                session['step'] = 2
+                session['step'] = 3
                 send_step_prompt(session, msg_response)
                 return
             else:
@@ -232,32 +269,32 @@ def handle_step(session, message, msg_response):
             msg_response.body("Selecciona una opción válida")
             return
 
-    elif step == 2:
+    elif step == 3:
         if message == "1":
             session['data']['incompatibilidad'] = True
-            session['step'] = 3
+            session['step'] = 4
             send_step_prompt(session, msg_response)
             return
         elif message == "2":
             session['data']['incompatibilidad'] = False
-            session['step'] = 4
+            session['step'] = 5
             send_step_prompt(session, msg_response)
             return
         else:
             msg_response.body("Selecciona una opción válida:\n1. Sí\n2. No")
             return
 
-    elif step == 3:
+    elif step == 4:
         if message in map(str, range(1, 5)):
             seleccionada = ESPECIALIDADES[int(message)-1]
             session['data']['incompatibilidad_con'] = seleccionada
-            session['step'] = 4
+            session['step'] = 5
             send_step_prompt(session, msg_response)
             return
         elif message.startswith("5:"):
             otra = message[2:].strip()
             session['data']['incompatibilidad_con'] = otra
-            session['step'] = 4
+            session['step'] = 5
             send_step_prompt(session, msg_response)
             return
         else:
@@ -265,10 +302,10 @@ def handle_step(session, message, msg_response):
             return
 
 
-    elif step == 4:
+    elif step == 5:
         if re.match(r'^\d+$', message):
             session['data']['piso'] = message
-            session['step'] = 5
+            session['step'] = 6
             send_step_prompt(session, msg_response)
             return
         else:
@@ -276,13 +313,13 @@ def handle_step(session, message, msg_response):
             return
 
 
-    elif step == 5:
+    elif step == 6:
         session['data']['sector'] = message
-        session['step'] = 6
+        session['step'] = 7
         send_step_prompt(session, msg_response)
         return
 
-    elif step == 6:
+    elif step == 7:
         if len(message.strip()) < 10:
             msg_response.body("Describe el problema con más detalle (mínimo 10 caracteres).")
             return
@@ -290,38 +327,49 @@ def handle_step(session, message, msg_response):
         try:
             mejorada = improve_description(message)
             session['data']['descripcion_mejorada'] = mejorada
+            
+            # NUEVO: Generar automáticamente el asunto basado en la descripción
+            try:
+                from app.services.rfi_generator import generate_subject
+                asunto = generate_subject(mejorada)
+                session['data']['asunto'] = asunto
+            except Exception as subject_error:
+                print(f"Error al generar asunto: {subject_error}")
+                session['data']['asunto'] = "SOLICITUD DE INFORMACIÓN"
+            
             msg_response.body(f"Hemos mejorado tu descripción:\n\n{mejorada}\n\n¿Está bien?\n1. Sí\n2. No, modificar")
         except Exception as e:
             print(f"Error al mejorar descripción: {e}")
             session['data']['descripcion_mejorada'] = message
+            session['data']['asunto'] = "SOLICITUD DE INFORMACIÓN"
             msg_response.body("Ocurrió un error. Usaremos tu descripción original.\n¿Está bien?\n1. Sí\n2. No, modificar")
-        session['step'] = 7
+        session['step'] = 8
         return
 
-    elif step == 7:
+    elif step == 8:
         if message == "1":
-            session['step'] = 7.5
+            session['step'] = 8.5
             msg_response.body("¿Deseas adjuntar una imagen del problema?\n1. Sí\n2. No, continuar sin imagen")
         elif message == "2":
-            session['step'] = 6
+            session['step'] = 7
             msg_response.body("Describe nuevamente el problema encontrado:")
         else:
             msg_response.body("Selecciona una opción válida:\n1. Sí\n2. No, modificar")
         return
 
-    elif step == 7.5:
+    elif step == 8.5:
         if message == "1":
-            session['step'] = 7.6
+            session['step'] = 8.6
             msg_response.body("Envía la imagen del problema ahora.")
         elif message == "2":
-            session['step'] = 8
+            session['step'] = 9
             session['send_pdf'] = True
             msg_response.body("Generando archivo RFI sin imágenes...")
         else:
             msg_response.body("Selecciona una opción válida:\n1. Sí\n2. No")
         return
 
-    if session['step'] != 8 and not session.get('send_pdf', False):
+    if session['step'] != 9 and not session.get('send_pdf', False):
         if not getattr(msg_response, 'body', None):  # Verificar si ya tiene un cuerpo de mensaje
             send_step_prompt(session, msg_response)
         return
@@ -337,13 +385,24 @@ def send_step_prompt(session, msg_response):
     """
     step = session.get('step', 1)
     
+    # NUEVOS PASOS
     if step == 1:
+        msg_response.body("Por favor, ingresa tu nombre completo:")
+    
+    elif step == 1.1:
+        msg_response.body(f"Gracias {session['data'].get('nombre_usuario')}. Por favor, ingresa tu cargo:")
+    
+    elif step == 1.2:
+        msg_response.body("¿Para cuándo necesitas la respuesta del RFI? (Formato: DD/MM/AA)")
+    
+    # PASOS ACTUALIZADOS CON NUEVA NUMERACIÓN
+    elif step == 2:
         msg_response.body("¿Cuál es tu especialidad?\n1. Estructuras\n2. Arquitectura\n3. Sanitarias\n4. Eléctricas\n5: Otra (especificar)")
     
-    elif step == 2:
+    elif step == 3:
         msg_response.body("¿Presenta incompatibilidad con otra especialidad?\n1. Sí\n2. No\n\nEscribe 'volver' para regresar a la pregunta anterior.")
     
-    elif step == 3:
+    elif step == 4:
         options = []
         
         for i, esp in enumerate(ESPECIALIDADES, 1):
@@ -354,13 +413,13 @@ def send_step_prompt(session, msg_response):
         
         msg_response.body(f"¿Con qué especialidad encuentra la incompatibilidad?\n{chr(10).join(options)}")
     
-    elif step == 4:
+    elif step == 5:
         msg_response.body("¿En qué piso se encontró el problema? (Ingresa un número)\n\nEscribe 'volver' para regresar a la pregunta anterior.")
     
-    elif step == 5:
+    elif step == 6:
         msg_response.body("Según el plano, ¿en qué sector se encuentra el problema?\n\nEscribe 'volver' para regresar a la pregunta anterior.")
     
-    elif step == 6:
+    elif step == 7:
         msg_response.body("Por favor, describe el problema que has encontrado con el mayor detalle posible:\n\nEscribe 'volver' para regresar a la pregunta anterior.")
     
     return msg_response

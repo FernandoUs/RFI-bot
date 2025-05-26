@@ -118,8 +118,7 @@ def generate_rfi_pdf(data, rfi_id, phone_number=None):
         pdf.image(client_logo_path, x=160, y=8, w=40)
     
     pdf.ln(20)
-    
-    # --- TABLA DE INFORMACIÓN DEL PROYECTO ---
+      # --- TABLA DE INFORMACIÓN DEL PROYECTO ---
     # Primera fila con información del proyecto
     pdf.set_fill_color(*header_bg_color)
     pdf.set_text_color(255, 255, 255)
@@ -151,8 +150,18 @@ def generate_rfi_pdf(data, rfi_id, phone_number=None):
     pdf.set_fill_color(*header_bg_color)
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Arial", "B", 9)
-    pdf.cell(190, 7, "Contratista:", 1, 1, "L", True)
+    pdf.cell(190, 7, "Información del Solicitante:", 1, 1, "L", True)
     pdf.set_text_color(0, 0, 0)
+      # NUEVOS CAMPOS - Información del solicitante
+    pdf.set_font("Arial", "", 9)
+    pdf.cell(70, 7, "Nombre del Solicitante:", 1, 0)
+    pdf.set_font("Arial", "B", 9)
+    pdf.cell(120, 7, data.get("nombre_usuario", ""), 1, 1)
+    
+    pdf.set_font("Arial", "", 9)
+    pdf.cell(70, 7, "Cargo:", 1, 0)
+    pdf.set_font("Arial", "B", 9)
+    pdf.cell(120, 7, data.get("cargo_usuario", ""), 1, 1)
     
     pdf.set_font("Arial", "", 9)
     pdf.cell(70, 7, "Compañía:", 1, 0)
@@ -162,6 +171,12 @@ def generate_rfi_pdf(data, rfi_id, phone_number=None):
     pdf.cell(20, 7, "Fecha:", 1, 0)
     pdf.set_font("Arial", "B", 9)
     pdf.cell(30, 7, datetime.now().strftime('%d/%m/%Y'), 1, 1)
+    
+    # NUEVO CAMPO - Fecha de respuesta requerida
+    pdf.set_font("Arial", "", 9)
+    pdf.cell(70, 7, "Fecha de Respuesta Requerida:", 1, 0)
+    pdf.set_font("Arial", "B", 9)
+    pdf.cell(120, 7, data.get("fecha_respuesta", ""), 1, 1)
     
     pdf.set_font("Arial", "", 9)
     pdf.cell(70, 7, "Disciplina:", 1, 0)
@@ -515,3 +530,73 @@ def analyze_plan_image(image_path):
     # Implementación futura para análisis de planos
     # Podría usar OpenAI Vision API o bibliotecas como OpenCV
     pass
+
+def generate_subject(description):
+    """
+    Genera un asunto relevante basado en la descripción proporcionada
+    usando Google Gemini API o un algoritmo de respaldo si falla
+    
+    Args:
+        description: La descripción mejorada del problema
+        
+    Returns:
+        str: Un asunto conciso y relevante para el RFI
+    """
+    config = get_config()
+    
+    try:
+        # Verificar si existe la API key de Google
+        google_api_key = config.GOOGLE_API_KEY
+        
+        if not google_api_key:
+            print("ERROR: No se ha configurado la API key de Google")
+            return "SOLICITUD DE INFORMACIÓN"
+        
+        print("Usando Gemini API para generar asunto...")
+        
+        # Configurar la API
+        genai.configure(api_key=google_api_key)
+        
+        # Crear un modelo
+        model = genai.GenerativeModel('models/gemini-1.5-flash')
+        
+        # Crear prompt específico para generar el asunto
+        prompt = f"""Genera un asunto técnico conciso (máximo 10 palabras) para un Request For Information (RFI) 
+        en un proyecto de construcción basado en esta descripción. El asunto debe ser específico 
+        pero breve, en mayúsculas, sin signos de interrogación y sin palabras como "solicitud" o "RFI".
+        
+        Descripción: {description}
+        
+        Asunto:"""
+        
+        # Generar respuesta
+        response = model.generate_content(prompt)
+        
+        # Verificar si hay respuesta válida
+        if response.text:
+            subject = response.text.strip().upper()
+            
+            # Limitar longitud y eliminar posibles prefijos/sufijos
+            subject = subject.replace("ASUNTO:", "").replace(":", "")
+            
+            # Si el asunto es demasiado largo, recortarlo
+            if len(subject) > 70:
+                subject = subject[:67] + "..."
+            
+            print(f"Asunto generado: {subject}")
+            return subject
+        else:
+            print("No se obtuvo respuesta al generar el asunto")
+            return "SOLICITUD DE INFORMACIÓN"
+        
+    except Exception as e:
+        print(f"Error al generar asunto: {e}")
+        
+        # Algoritmo de respaldo:
+        # Si falla la IA, generar un asunto basado en las primeras palabras de la descripción
+        words = description.split()
+        if len(words) >= 5:
+            backup_subject = " ".join(words[:5]).upper() + "..."
+            return backup_subject if len(backup_subject) <= 70 else backup_subject[:67] + "..."
+        else:
+            return "SOLICITUD DE INFORMACIÓN"
