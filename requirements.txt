@@ -17,7 +17,7 @@ fpdf==1.7.2
 # Servicios externos y procesamiento
 requests==2.31.0
 boto3==1.29.3
-pillow==10.1.0
+pillow==11.2.1
 
 # Pruebas (opcional - solo para desarrollo)
 pytest==7.4.0
