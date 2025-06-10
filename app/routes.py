@@ -2,6 +2,7 @@ import logging
 import threading
 import uuid
 import traceback
+import time
 from flask import request, Response
 from app.services.whatsapp_api import process_incoming_message, send_pdf_to_whatsapp
 from app.services.rfi_generator import generate_rfi_pdf
@@ -59,12 +60,33 @@ def configure_routes(app):
                         rfi_id = session_data.get('rfi_id', str(uuid.uuid4())[:8])
                         
                         logger.info(f"Iniciando generación de PDF para RFI #{rfi_id} en hilo separado")
-                        pdf_tuple = generate_rfi_pdf(rfi_data, rfi_id, phone_number=sender)
+                        # Crear la estructura completa que espera generate_rfi_pdf
+                        session_data_for_pdf = {
+                            'data': rfi_data,
+                            'rfi_id': rfi_id,
+                            'phone_number': sender
+                        }
+                        pdf_tuple = generate_rfi_pdf(session_data_for_pdf, rfi_id, phone_number=sender)
                         db = DatabaseManager()
                         clean_sender = sender.replace('whatsapp:', '')
+                        
+                        # AGREGAR: Guardar el RFI en la base de datos ANTES del envío
+                        try:
+                            rfi_data_to_save = {
+                                'data': rfi_data,
+                                'rfi_id': rfi_id,
+                                'pdf_path': pdf_tuple[0] if pdf_tuple and len(pdf_tuple) > 0 else None,
+                                'pdf_url': pdf_tuple[1] if pdf_tuple and len(pdf_tuple) > 1 else None,
+                                'creation_time': time.time()
+                            }
+                            db.save_rfi(rfi_data_to_save, clean_sender)
+                            logger.info(f"RFI #{rfi_id} guardado en la base de datos desde routes.py")
+                        except Exception as save_error:
+                            logger.error(f"Error al guardar RFI #{rfi_id}: {save_error}")
+
+                        # Verificar que la sesión actual tenga el mismo RFI ID antes de enviar
                         current_session = db.get_session(clean_sender)
                         
-                        # Verificar que la sesión actual tenga el mismo RFI ID antes de enviar
                         if current_session and current_session.get('rfi_id') == rfi_id:
                             success = send_pdf_to_whatsapp(sender, pdf_tuple, rfi_id)
                             

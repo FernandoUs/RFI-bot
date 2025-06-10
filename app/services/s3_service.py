@@ -43,14 +43,23 @@ def upload_file_to_s3(file_path, phone_number=None, file_type="pdf", object_name
     
     config = get_config()
     
+    # Validar credenciales
+    if not config.AWS_ACCESS_KEY or not config.AWS_SECRET_KEY:
+        print("Error: Credenciales de AWS no configuradas")
+        return None
+    
     try:
-        # Inicializar cliente S3
         s3_client = boto3.client(
             's3',
             aws_access_key_id=config.AWS_ACCESS_KEY,
-            aws_secret_access_key=config.AWS_SECRET_KEY
+            aws_secret_access_key=config.AWS_SECRET_KEY,
+            region_name=getattr(config, 'AWS_REGION', 'us-west-1')
         )
-        
+    except Exception as e:
+        print(f"Error al inicializar cliente S3: {e}")
+        return None
+    
+    try:
         # Establecer la estructura de carpetas
         base_folder = "rfi-bot"
         
@@ -82,17 +91,26 @@ def upload_file_to_s3(file_path, phone_number=None, file_type="pdf", object_name
             else:
                 content_type = 'application/octet-stream'
         
+        bucket_name = config.AWS_S3_BUCKET
+        aws_region = config.AWS_REGION or 'us-west-1'
+
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=config.AWS_ACCESS_KEY,
+            aws_secret_access_key=config.AWS_SECRET_KEY,
+            region_name=aws_region
+        )
+        
         s3_client.upload_file(
             file_path, 
-            'anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85', 
+            bucket_name, 
             object_path,
             ExtraArgs={
                 'ContentType': content_type
             }
         )
         
-        bucket_name = 'anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85'
-        fixed_region = 'us-west-1'  # Esta es la región que parece funcionar mejor
+        fixed_region = 'us-west-1' 
 
         # URL con tiempo de expiración
         url = s3_client.generate_presigned_url(
@@ -108,30 +126,42 @@ def upload_file_to_s3(file_path, phone_number=None, file_type="pdf", object_name
         direct_url = f"https://{bucket_name}.s3.{fixed_region}.amazonaws.com/{object_path}"
         
         print(f"Archivo subido correctamente a: {url}")
-        
-        return {
-            "presigned_url": url,
-            "direct_url": direct_url
-        }
+        return url  
 
         
     except Exception as e:
         print(f"Error al subir archivo a S3: {e}")
         return None
 
-def save_image_from_url(media_url, phone_number, image_index, rfi_id):
+def save_image_from_url(media_url, phone_number, image_index=None, rfi_id=None):
     """
     Descarga una imagen desde una URL y la sube a S3
+    
+    Args:
+        media_url: URL de la imagen de WhatsApp
+        phone_number: Número de teléfono del usuario
+        image_index: Índice de la imagen (se genera automáticamente si no se proporciona)
+        rfi_id: ID del RFI (se genera automáticamente si no se proporciona)
     """
     config = get_config()
     temp_path = None
     
     try:
+        # Si no se proporciona rfi_id, generar uno temporal basado en timestamp
+        if not rfi_id:
+            rfi_id = str(int(time.time()))
+        
+        # Si no se proporciona image_index, generar uno secuencial
+        if image_index is None:
+            # Generar un índice basado en el timestamp para evitar conflictos
+            image_index = int(str(int(time.time()))[-3:])  # Últimos 3 dígitos del timestamp
+        
         # Intentar descargar la imagen
         image_content = download_media_from_whatsapp(media_url)
         
-        # Generar nombre de archivo
-        filename = f"image_{rfi_id}_{image_index}.jpg"
+        # Generar nombre de archivo único
+        timestamp = int(time.time())
+        filename = f"image_{rfi_id}_{image_index}_{timestamp}.jpg"
         temp_path = os.path.join(config.TEMP_FOLDER, filename)
         
         # También guardar una copia en static/images
@@ -161,22 +191,32 @@ def save_image_from_url(media_url, phone_number, image_index, rfi_id):
                 d.text((10, 10), f"Imagen {image_index} no disponible", fill=(0, 0, 0))
                 d.text((10, 30), "Error al descargar desde WhatsApp", fill=(255, 0, 0))
                 d.text((10, 50), f"RFI #{rfi_id}", fill=(0, 0, 0))
+                d.text((10, 70), f"Timestamp: {timestamp}", fill=(128, 128, 128))
                 img.save(temp_path)
+                img.save(static_path)  # También guardar en static
                 print(f"Imagen de marcador guardada en: {temp_path}")
             except Exception as e:
                 print(f"Error al crear imagen de marcador: {e}")
                 return None
         
         # Subir a S3
-        s3_url = upload_file_to_s3(temp_path, phone_number=phone_number, file_type="image", object_name=filename)
-    
-        
-        return s3_url
+        s3_result = upload_file_to_s3(temp_path, phone_number=phone_number, file_type="image", object_name=filename)
+
+        if s3_result:
+            # Como upload_file_to_s3 ahora devuelve solo un string (URL), no un diccionario
+            return s3_result
+        else:
+            # Si S3 falla, devolver la ruta local como fallback
+            local_url = f"file://{static_path}" if os.path.exists(static_path) else None
+            print(f"S3 falló, usando archivo local: {local_url}")
+            return static_path  
+            
     except Exception as e:
         print(f"Error al procesar imagen desde URL: {e}")
         print(traceback.format_exc())
         return None
     finally: 
+        # Limpiar archivo temporal pero mantener el de static
         if temp_path and os.path.exists(temp_path):
             try:
                 os.remove(temp_path)

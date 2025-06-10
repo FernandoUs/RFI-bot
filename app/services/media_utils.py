@@ -124,9 +124,15 @@ def download_media_from_whatsapp(media_url):
                 d.text((50, 100), "No se pudo mostrar en el PDF", fill=(255, 0, 0))
                 d.text((50, 150), "Ver imagen original en WhatsApp", fill=(0, 0, 255))
             
-            # Guardar en memoria
+            img_format = 'JPEG'  
+            if media_url:
+                if '.png' in media_url.lower():
+                    img_format = 'PNG'
+                elif '.webp' in media_url.lower():
+                    img_format = 'JPEG'  
+            
             img_bytes = io.BytesIO()
-            img.save(img_bytes, format='JPEG')
+            img.save(img_bytes, format=img_format)
             img_bytes.seek(0)
             
             return img_bytes.read()

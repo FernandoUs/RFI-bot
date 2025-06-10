@@ -1,6 +1,7 @@
 import os
 import json
 from datetime import datetime
+import time
 
 class DatabaseManager:
     """
@@ -81,27 +82,41 @@ class DatabaseManager:
         except Exception as e:
             print(f"Error al eliminar sesión: {e}")
     
-    def save_rfi(self, rfi_data):
+    def save_rfi(self, rfi_data, phone_number):
         """
-        Guarda un RFI completado
+        Guarda un RFI completado en archivo JSON
         
         Args:
             rfi_data: Datos del RFI a guardar
+            phone_number: Número de teléfono del usuario
         """
         try:
+            # Leer RFIs existentes
             with open(self.rfis_file, "r") as f:
                 rfis = json.load(f)
             
-            # Añadir fecha de creación
-            rfi_data['created_at'] = datetime.now().isoformat()
+            # Crear ID único para el RFI
+            rfi_id = str(rfi_data.get('rfi_id'))
+            rfi_key = f"{phone_number}_{rfi_id}"
             
-            # Guardar por ID
-            rfis[rfi_data['rfi_id']] = rfi_data
+            # Guardar el RFI
+            rfis[rfi_key] = {
+                'rfi_id': rfi_id,
+                'phone_number': phone_number,
+                'data': rfi_data.get('data', {}),
+                'pdf_path': rfi_data.get('pdf_path'),
+                'pdf_url': rfi_data.get('pdf_url'),
+                'creation_time': rfi_data.get('creation_time', time.time()),
+                'created_at': datetime.now().isoformat()
+            }
             
+            # Guardar archivo
             with open(self.rfis_file, "w") as f:
                 json.dump(rfis, f, indent=2)
-                
+            
+            print(f"RFI #{rfi_id} guardado correctamente para {phone_number}")
             return True
+            
         except Exception as e:
             print(f"Error al guardar RFI: {e}")
             return False
@@ -123,3 +138,41 @@ class DatabaseManager:
         except Exception as e:
             print(f"Error al recuperar RFI: {e}")
             return None
+    
+    def get_user_rfis(self, phone_number):
+        """
+        Recupera todos los RFIs de un usuario por su número de teléfono
+        
+        Args:
+            phone_number: Número de teléfono del usuario
+            
+        Returns:
+            list: Lista de RFIs del usuario ordenados por fecha de creación
+        """
+        try:
+            with open(self.rfis_file, "r") as f:
+                rfis = json.load(f)
+                user_rfis = [rfi for rfi in rfis.values() if rfi.get('phone_number') == phone_number]
+                # Ordenar por fecha de creación (más reciente primero)
+                user_rfis.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+                return user_rfis
+        except Exception as e:
+            print(f"Error al recuperar RFIs del usuario: {e}")
+            return []
+
+    def get_user_rfi_count(self, phone_number):
+        """
+        Recupera el número de RFIs completados por un usuario
+        
+        Args:
+            phone_number: Número de teléfono del usuario
+            
+        Returns:
+            int: Número de RFIs completados por el usuario
+        """
+        try:
+            rfis = self.get_user_rfis(phone_number)
+            return len(rfis)
+        except Exception as e:
+            print(f"Error al contar RFIs del usuario: {e}")
+            return 0

@@ -45,8 +45,16 @@ def get_config():
         'WHATSAPP_API_TOKEN': os.getenv('WHATSAPP_API_TOKEN'),
         'WHATSAPP_PHONE_NUMBER_ID': os.getenv('WHATSAPP_PHONE_NUMBER_ID'),
         'WHATSAPP_BUSINESS_ACCOUNT_ID': os.getenv('WHATSAPP_BUSINESS_ACCOUNT_ID'),
-        "S3_UPLOAD_ENABLED": True
+        "S3_UPLOAD_ENABLED": True,
 
+        # Nuevas configuraciones de AWS S3
+        'AWS_S3_BUCKET': os.getenv('S3_BUCKET_NAME', 'anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85'),
+        'AWS_ACCESS_KEY': os.getenv('AWS_ACCESS_KEY'),
+        'AWS_SECRET_KEY': os.getenv('AWS_SECRET_KEY'),
+        'AWS_REGION': os.getenv('AWS_REGION', 'us-west-1'),
+        
+        # Otras configuraciones que puedan faltar
+        'STATIC_FOLDER': os.getenv('STATIC_FOLDER', 'static'),
     }
     
     # Crear directorio temporal si no existe

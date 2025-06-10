@@ -4,7 +4,11 @@ import time
 import requests
 import threading
 import traceback
+import boto3
+import io
 from fpdf import FPDF as FPDF2
+from PIL import Image, ImageDraw
+from urllib.parse import urlparse
 from datetime import datetime
 from app.utils.config import get_config as get_config_func
 from app.utils.config import get_config
@@ -41,7 +45,7 @@ def improve_description(description):
         prompt = f"""Como ingeniero de construcción, mejora ÚNICAMENTE la siguiente descripción técnica del PROBLEMA para que este dentro de un RFI, 
         haciéndola más profesional y un pocoo más detallada pero no tan extensa. NO generes un RFI completo, NO agregues campos adicionales,
         NO incluyas "Detalles Específicos", "Adjuntos", ni otros elementos de formato, NO inventes ejes ni datos adicionales. NO agregues ningun requerimiento o relacionado a eso
-        solamente centrate en la problematica
+        solamente centrate en la problematica, NO escribas se requiere o requiendo ni nada relacionado a ese tema
         
         SOLO mejora el texto de la descripción del problema original manteniendo su extensión similar (máximo 1-2 párrafos).
         NO incluyas "Asunto:", "Descripción:", ni otras etiquetas o títulos.
@@ -85,8 +89,20 @@ def improve_description(description):
         return description
 
 
-def generate_rfi_pdf(data, rfi_id, phone_number=None):
-    config = get_config_func()  # Esto funciona porque get_config está importado al inicio del archivo
+def generate_rfi_pdf(session_data, rfi_id, phone_number=None):
+    config = get_config_func()
+    
+    # Extraer los datos del formulario de la estructura correcta
+    data = session_data.get('data', {}) if isinstance(session_data, dict) and 'data' in session_data else session_data
+    
+    
+    if not data:
+        raise ValueError("No se encontraron datos para generar el RFI")
+    
+    required_fields = ['nombre_usuario', 'cargo_usuario', 'descripcion']
+    missing_fields = [field for field in required_fields if not data.get(field)]
+    if missing_fields:
+        print(f"Advertencia: Campos faltantes: {missing_fields}")
     
     # Crear objeto PDF (orientación horizontal para mayor espacio)
     pdf = CustomPDF()
@@ -112,7 +128,7 @@ def generate_rfi_pdf(data, rfi_id, phone_number=None):
     
     # Título principal centrado
     pdf.set_font("Arial", "B", 14)
-    pdf.cell(90, 10, "Request For Information (RFI) N°" + rfi_id, 0, 0, "C")
+    pdf.cell(90, 10, "Request For Information (RFI) N°" + str(rfi_id), 0, 0, "C")
     
     # Cliente logo (lado derecho)
     if os.path.exists(client_logo_path):
@@ -212,8 +228,15 @@ def generate_rfi_pdf(data, rfi_id, phone_number=None):
     pdf.set_font("Arial", "", 9)
     pdf.cell(70, 7, "Asunto:", 1, 0)
     pdf.set_font("Arial", "B", 9)
-    # Fixed multi_cell call to be compatible with fpdf2
-    pdf.multi_cell(w=120, h=7, txt=data.get("asunto", "SOLICITUD PLANOS DE INGENIERÍA MODIFICADOS"), border=1, align="L")
+    asunto_text = data.get("asunto", "SOLICITUD PLANOS DE INGENIERÍA MODIFICADOS")
+    if len(asunto_text) > 60:  
+        # Usar multi_cell y ajustar posición
+        current_y = pdf.get_y()
+        pdf.set_xy(80, current_y)  # Posición correcta para el asunto
+        pdf.multi_cell(w=110, h=7, txt=asunto_text, border=1, align="L")
+        pdf.ln(0)  # Asegurar nueva línea
+    else: 
+        pdf.cell(120, 7, asunto_text, 1, 1)
     # Sección de detalles de la solicitud
     pdf.ln(5)
     pdf.set_fill_color(*header_bg_color)
@@ -224,8 +247,7 @@ def generate_rfi_pdf(data, rfi_id, phone_number=None):
     
     # Descripción del problema
     # Usar descripción mejorada si existe, si no la original
-    descripcion = data.get("descripcion_mejorada", data.get("descripcion_original", ""))
-    
+    descripcion = data.get('descripcion_mejorada') or data.get('descripcion_original') or data.get('descripcion', 'Sin descripción')    
     # Dividir en dos secciones: Problemática y Requerimientos
     pdf.set_fill_color(240, 240, 240)  # Color gris muy claro para subtítulos
     pdf.set_font("Arial", "B", 9)
@@ -242,38 +264,88 @@ def generate_rfi_pdf(data, rfi_id, phone_number=None):
     pdf.cell(190, 7, "Requerimientos:", 1, 1, "L", True)
       # Marco para los requerimientos
     pdf.set_font("Arial", "", 9)
-    pdf.multi_cell(w=190, h=7, txt=generate_requeriment(data.get("descripcion_mejorada")), border=1, align="L")
+    descripcion_para_requerimiento = data.get("descripcion_mejorada") or data.get("descripcion", "Sin descripción")
+    pdf.multi_cell(w=190, h=7, txt=generate_requeriment(descripcion_para_requerimiento), border=1, align="L")
     
-    # Sección de imágenes
+    # Sección de imágenes - NUEVA PÁGINA
     if "images" in data and data["images"]:
-        pdf.ln(5)
+        # AGREGAR NUEVA PÁGINA para las imágenes
+        pdf.add_page()
+        
+        # Encabezado de la segunda página
         pdf.set_fill_color(*header_bg_color)
         pdf.set_text_color(255, 255, 255)
-        pdf.set_font("Arial", "B", 10)
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(190, 10, f"Request For Information (RFI) N°{rfi_id} - Documentación Gráfica", 1, 1, "C", True)
+        pdf.set_text_color(0, 0, 0)
+        pdf.ln(5)
+
+        # Encabezado de sección
+        pdf.set_fill_color(*header_bg_color)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font("Arial", "B", 11)
         pdf.cell(190, 8, "Reason Request / Razón de la solicitud:", 1, 1, "L", True)
         pdf.set_text_color(0, 0, 0)
-        pdf.ln(2)
+        pdf.ln(3)
 
-        # Añadimos un texto corto
-        pdf.set_font("Arial", "I", 9)
+        # Texto explicativo
+        pdf.set_font("Arial", "I", 10)
         pdf.multi_cell(w=190, h=7, txt="Las imágenes/planos presentados a continuación muestran la incompatibilidad encontrada en el proyecto:", border=0, align="L")
+        pdf.ln(5)
         
         temp_files = []
         
-        # Definir layout para imágenes
+        # NUEVO: Configuración para imágenes grandes en página completa
         num_images = len(data["images"])
         
-        # SOLUCIÓN: Implementar múltiples métodos para descargar imágenes
         if num_images > 0:
-            # Mostrar imágenes en una fila
-            img_width = 190 / num_images - 10
+            # CONFIGURACIÓN MEJORADA para página completa
+            page_width = 190  # Ancho total disponible
+            page_height = 240  # Altura total disponible (página completa menos márgenes)
+            margin = 8  # Margen entre imágenes
             
-            # Guardar posición Y actual para mantener alineación
-            current_y = pdf.get_y()
-            max_height = 0
+            # Layout optimizado para imágenes grandes y legibles
+            if num_images == 1:
+                # Una imagen: usar toda la página
+                img_width = page_width
+                img_height = page_height
+                images_per_row = 1
+                rows = 1
+            elif num_images == 2:
+                # Dos imágenes: una arriba, una abajo (verticalmente)
+                img_width = page_width
+                img_height = (page_height - margin) / 2
+                images_per_row = 1
+                rows = 2
+            elif num_images == 3:
+                # Tres imágenes: primera grande arriba, dos pequeñas abajo
+                layouts = [
+                    {'width': page_width, 'height': (page_height - margin) * 0.6},  # Primera imagen
+                    {'width': (page_width - margin) / 2, 'height': (page_height - margin) * 0.4},  # Segunda imagen
+                    {'width': (page_width - margin) / 2, 'height': (page_height - margin) * 0.4}   # Tercera imagen
+                ]
+            elif num_images == 4:
+                # Cuatro imágenes: 2x2
+                img_width = (page_width - margin) / 2
+                img_height = (page_height - margin) / 2
+                images_per_row = 2
+                rows = 2
+            else:
+                # Más de 4 imágenes: solo mostrar las primeras 4
+                img_width = (page_width - margin) / 2
+                img_height = (page_height - margin) / 2
+                images_per_row = 2
+                rows = 2
+                print(f"⚠️ Mostrando solo las primeras 4 de {num_images} imágenes para mejor legibilidad")
             
-            for i, image_data in enumerate(data["images"]):
-                print(f"Procesando imagen {i+1} de {num_images}")
+            start_y = pdf.get_y()
+            current_row_height = 0
+            
+            print(f"Layout optimizado: {min(num_images, 4)} imágenes en página completa")
+            
+            # Procesar imágenes (máximo 4 para mantener legibilidad)
+            for i, image_data in enumerate(data["images"][:4]):
+                print(f"Procesando imagen {i+1} de {min(num_images, 4)}")
                 success = False
                 image_content = None
                 
@@ -310,7 +382,19 @@ def generate_rfi_pdf(data, rfi_id, phone_number=None):
                         try:
                             print(f"Intentando descarga con {url_type}: {url}")
                             
-                            # Configurar una sesión con timeout más largo
+                            # AGREGAR: Manejar URLs file:// directamente
+                            if url.startswith('file://'):
+                                local_file_path = url.replace('file://', '')
+                                if os.path.exists(local_file_path):
+                                    print(f"Usando archivo local directamente: {local_file_path}")
+                                    with open(local_file_path, 'rb') as f:
+                                        image_content = f.read()
+                                    success = True
+                                    break
+                                else:
+                                    continue
+                            
+                            # Configurar una sesión con timeout más largo (para URLs HTTP/HTTPS)
                             session = requests.Session()
                             response = session.get(url, timeout=30)
                             
@@ -327,15 +411,12 @@ def generate_rfi_pdf(data, rfi_id, phone_number=None):
                     # MÉTODO 2: Intentar con boto3 directamente si falla el método anterior
                     if not success:
                         try:
-                            import boto3
-                            from app.utils.config import get_config
                             config = get_config()
                             
                             # Extraer bucket y key de la primera URL válida
                             for _, url in urls_to_try:
                                 try:
                                     # Parsear URL para obtener bucket y key
-                                    from urllib.parse import urlparse
                                     parsed = urlparse(url)
                                     path = parsed.path.lstrip('/')
                                     
@@ -396,8 +477,6 @@ def generate_rfi_pdf(data, rfi_id, phone_number=None):
                     # Si no hay imagen, crear una imagen de marcador
                     if not success:
                         print("Creando imagen de marcador para el PDF")
-                        from PIL import Image, ImageDraw, ImageFont
-                        import io
                         
                         # Crear imagen con texto
                         img = Image.new('RGB', (800, 600), color=(240, 240, 240))
@@ -414,55 +493,163 @@ def generate_rfi_pdf(data, rfi_id, phone_number=None):
                         image_content = img_byte_array.getvalue()
                         success = True
                     
-                    # Procesar la imagen
+                    # NUEVO: PROCESAMIENTO OPTIMIZADO PARA PÁGINA COMPLETA
                     if success and image_content:
-                        # Guardar temporalmente
                         temp_file = os.path.join(config.TEMP_FOLDER, f"temp_img_{rfi_id}_{i}.jpg")
                         with open(temp_file, 'wb') as f:
                             f.write(image_content)
                         temp_files.append(temp_file)
                         
-                        # Calcular dimensiones para el PDF
-                        from PIL import Image
+                        # Obtener dimensiones originales
                         img = Image.open(temp_file)
-                        img_w, img_h = img.size
+                        original_w, original_h = img.size
+                        aspect_ratio = original_w / original_h
                         
-                        # Limitar altura máxima a 60% de la página
-                        max_h = 120  # Altura máxima en mm
+                        print(f"Imagen {i+1}: {original_w}x{original_h} px (ratio: {aspect_ratio:.2f})")
                         
-                        # Mantener relación de aspecto
-                        ratio = min(img_width/img_w, max_h/img_h)
-                        final_w = img_w * ratio
-                        final_h = img_h * ratio
+                        # CALCULAR DIMENSIONES SEGÚN LAYOUT
+                        if num_images == 3 and i < 3:
+                            # Layout especial para 3 imágenes
+                            if i == 0:  # Primera imagen grande
+                                final_w = page_width
+                                final_h = min((page_height - margin) * 0.6, final_w / aspect_ratio)
+                                if final_h > (page_height - margin) * 0.6:
+                                    final_h = (page_height - margin) * 0.6
+                                    final_w = final_h * aspect_ratio
+                                x_pos = 10 + (page_width - final_w) / 2  # Centrada
+                                y_pos = start_y
+                            else:  # Segunda y tercera imagen
+                                available_width = (page_width - margin) / 2
+                                available_height = (page_height - margin) * 0.4
+                                
+                                if aspect_ratio > 1:  # Horizontal
+                                    final_w = available_width
+                                    final_h = min(available_height, final_w / aspect_ratio)
+                                else:  # Vertical
+                                    final_h = available_height
+                                    final_w = min(available_width, final_h * aspect_ratio)
+                                
+                                col = (i - 1) % 2  # Segunda imagen col=0, tercera col=1
+                                x_pos = 10 + col * (available_width + margin) + (available_width - final_w) / 2
+                                y_pos = start_y + (page_height - margin) * 0.6 + margin + (available_height - final_h) / 2
                         
-                        # Actualizar altura máxima para alineación
-                        if final_h > max_height:
-                            max_height = final_h
+                        else:
+                            # Layout regular (1, 2, 4+ imágenes)
+                            if num_images == 1:
+                                # Una imagen: usar toda la página manteniendo proporción
+                                if aspect_ratio > (page_width / page_height):
+                                    # Imagen muy horizontal: limitar por ancho
+                                    final_w = page_width
+                                    final_h = final_w / aspect_ratio
+                                else:
+                                    # Imagen cuadrada/vertical: limitar por altura
+                                    final_h = min(page_height, page_width / aspect_ratio)
+                                    final_w = final_h * aspect_ratio
+                                
+                                x_pos = 10 + (page_width - final_w) / 2
+                                y_pos = start_y + (page_height - final_h) / 2
+
+                            elif num_images == 2:
+                                # Dos imágenes verticalmente
+                                available_height = (page_height - margin) / 2
+                                
+                                if aspect_ratio > 1:  # Horizontal
+                                    final_w = page_width
+                                    final_h = min(available_height, final_w / aspect_ratio)
+                                else:  # Vertical
+                                    final_h = available_height
+                                    final_w = min(page_width, final_h * aspect_ratio)
+                                
+                                x_pos = 10 + (page_width - final_w) / 2
+                                y_pos = start_y + i * (available_height + margin) + (available_height - final_h) / 2
+                            
+                            else:
+                                # Cuatro o más imágenes: grilla 2x2
+                                available_width = (page_width - margin) / 2
+                                available_height = (page_height - margin) / 2
+                                
+                                if aspect_ratio > 1:
+                                    final_w = available_width
+                                    final_h = min(available_height, final_w / aspect_ratio)
+                                else:
+                                    final_h = available_height
+                                    final_w = min(available_width, final_h * aspect_ratio)
+                                
+                                col = i % 2
+                                row = i // 2
+                                
+                                x_pos = 10 + col * (available_width + margin) + (available_width - final_w) / 2
+                                y_pos = start_y + row * (available_height + margin) + (available_height - final_h) / 2
+                    
+                    # VERIFICAR límites de página
+                    if y_pos + final_h > 280:  # Límite de página
+                        scale = (280 - y_pos) / final_h * 0.95
+                        final_h *= scale
+                        final_w *= scale
+                        # Recentrar después del escalado
+                        if num_images == 1:
+                            x_pos = 10 + (page_width - final_w) / 2
+                    
+                    print(f"Imagen {i+1}: {final_w:.1f}x{final_h:.1f}mm en ({x_pos:.1f}, {y_pos:.1f})")
+                    
+                    # MEJORAR calidad para imágenes grandes
+                    if original_w > 1500 or original_h > 1500:
+                        # Redimensionar para mejor calidad en PDF
+                        max_dimension = 1500
+                        if original_w > original_h:
+                            new_w = max_dimension
+                            new_h = int(original_h * max_dimension / original_w)
+                        else:
+                            new_h = max_dimension
+                            new_w = int(original_w * max_dimension / original_h)
                         
-                        # Posicionar imagen en PDF
-                        x_pos = 10 + i * (img_width + 10)
-                        pdf.image(temp_file, x=x_pos, y=current_y, w=final_w, h=final_h)
+                        resized_img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                        resized_temp_file = os.path.join(config.TEMP_FOLDER, f"resized_img_{rfi_id}_{i}.jpg")
+                        resized_img.save(resized_temp_file, 'JPEG', quality=90)
+                        temp_files.append(resized_temp_file)
                         
-                        print(f"Imagen {i+1} añadida al PDF correctamente")
+                        pdf.image(resized_temp_file, x=x_pos, y=y_pos, w=final_w, h=final_h)
+                    else:
+                        pdf.image(temp_file, x=x_pos, y=y_pos, w=final_w, h=final_h)
+                    
+                    print(f"✅ Imagen {i+1} añadida al PDF con tamaño optimizado para legibilidad")
                 
                 except Exception as e:
-                    print(f"Error general al procesar imagen {i+1}: {e}")
-                    import traceback
+                    print(f"❌ Error al procesar imagen {i+1}: {e}")
                     print(traceback.format_exc())
             
-            # Avanzar después de todas las imágenes
-            pdf.ln(max_height + 20)  # Espacio adicional después de las imágenes
-        
-        # Limpiar archivos temporales al finalizar
-        for temp_file in temp_files:
-            try:
-                if os.path.exists(temp_file):
-                    os.unlink(temp_file)
-            except:
-                pass
+            # AGREGAR nota si hay más de 4 imágenes
+            if num_images > 4:
+                pdf.ln(10)
+                pdf.set_font("Arial", "I", 9)
+                pdf.set_text_color(150, 150, 150)
+                pdf.cell(190, 5, f"Nota: Se muestran las primeras 4 de {num_images} imágenes para optimizar la legibilidad.", 0, 1, "C")
+                pdf.set_text_color(0, 0, 0)
+            
+            # Limpiar archivos temporales
+            for temp_file in temp_files:
+                try:
+                    if os.path.exists(temp_file):
+                        os.unlink(temp_file)
+                except Exception as cleanup_error:
+                    print(f"No se pudo eliminar archivo temporal {temp_file}: {cleanup_error}")
 
-    # Sección para firmas
-    pdf.ln(5)
+        # ✅ NUEVA PÁGINA para firmas después de las imágenes
+        pdf.add_page()
+        
+        # Encabezado de la tercera página
+        pdf.set_fill_color(*header_bg_color)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(190, 10, f"Request For Information (RFI) N°{rfi_id} - Firmas y Seguimiento", 1, 1, "C", True)
+        pdf.set_text_color(0, 0, 0)
+        pdf.ln(10)
+
+    # Sección para firmas (con o sin imágenes, siempre en página separada si hay imágenes)
+    if "images" not in data or not data["images"]:
+        # Si no hay imágenes, añadir firmas en la primera página
+        pdf.ln(10)
+    
     pdf.set_fill_color(*header_bg_color)
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Arial", "B", 10)
@@ -494,7 +681,7 @@ def generate_rfi_pdf(data, rfi_id, phone_number=None):
     pdf.set_font("Arial", "B", 9)
     pdf.cell(50, 7, data.get("cargo", "RESIDENTE"), 1, 1)
     
-    # Reemplazar la sección de información por firmas del solicitante y responsable
+    # Firmas del solicitante y responsable
     pdf.ln(5)
     pdf.set_fill_color(*header_bg_color)
     pdf.set_text_color(255, 255, 255)
@@ -529,13 +716,12 @@ def generate_rfi_pdf(data, rfi_id, phone_number=None):
             # Definir una función para limpiar archivos temporales
             def cleanup_files():
                 for temp_file in temp_files:
-                    if os.path.exists(temp_file):
-                        try:
-                            if os.path.exists(temp_file):
-                                os.remove(temp_file)
-                                print(f"Archivo temporal eliminado: {temp_file}")
-                        except Exception as del_error:
-                            print(f"No se pudo eliminar archivo temporal {temp_file}: {del_error}")
+                    try:
+                        if os.path.exists(temp_file):
+                            os.remove(temp_file)
+                            print(f"Archivo temporal eliminado: {temp_file}")
+                    except Exception as del_error:
+                        print(f"No se pudo eliminar archivo temporal {temp_file}: {del_error}")
             
             # Crear y lanzar hilo para limpieza
             cleanup_thread = threading.Thread(target=cleanup_files)
@@ -653,7 +839,6 @@ def generate_subject(description):
     config = get_config()
     
     try:
-        # Verificar si existe la API key de Google
         google_api_key = config.GOOGLE_API_KEY
         
         if not google_api_key:
@@ -662,12 +847,9 @@ def generate_subject(description):
         
         print("Usando Gemini API para generar asunto...")
         
-        # Configurar la API
         genai.configure(api_key=google_api_key)
-        
-        # Crear un modelo
         model = genai.GenerativeModel('models/gemini-1.5-flash')
-          # Crear prompt específico para generar el asunto
+        
         prompt = f"""Genera un asunto técnico conciso para un Request For Information (RFI) 
         en un proyecto de construcción basado en esta descripción. El asunto debe tener formato
         de oración natural, que sea corto de maximo 10 palabras y relacionados a la descripción.
@@ -677,21 +859,15 @@ def generate_subject(description):
         
         Asunto:"""
         
-        # Generar respuesta
         response = model.generate_content(prompt)
-          # Verificar si hay respuesta válida
+        
         if response.text:
             subject = response.text.strip()
-            
-            # Limpiar el texto de posibles marcadores o prefijos
             subject = subject.replace("Asunto:", "").replace(":", "").strip()
             
-            # Asegurar formato de capitalización adecuado (primera letra mayúscula)
             if subject and len(subject) > 1:
-                # Primera letra mayúscula
                 subject = subject[0].upper() + subject[1:]
             
-            # Si el asunto es demasiado largo, recortarlo
             if len(subject) > 70:
                 subject = subject[:67] + "..."
             
@@ -704,8 +880,7 @@ def generate_subject(description):
     except Exception as e:
         print(f"Error al generar asunto: {e}")
         
-        # Algoritmo de respaldo:
-        # Si falla la IA, generar un asunto basado en las primeras palabras de la descripción
+        # Algoritmo de respaldo
         words = description.split()
         if len(words) >= 5:
             backup_subject = " ".join(words[:5]).upper() + "..."
