@@ -16,14 +16,13 @@ class DatabaseManager:
         
         # Crear directorios si no existen
         os.makedirs(os.path.dirname(self.sessions_file), exist_ok=True)
-        
-        # Inicializar archivos si no existen
+          # Inicializar archivos si no existen
         if not os.path.exists(self.sessions_file):
-            with open(self.sessions_file, "w") as f:
+            with open(self.sessions_file, "w", encoding='utf-8') as f:
                 json.dump({}, f)
         
         if not os.path.exists(self.rfis_file):
-            with open(self.rfis_file, "w") as f:
+            with open(self.rfis_file, "w", encoding='utf-8') as f:
                 json.dump({}, f)
     
     def get_session(self, phone_number):
@@ -37,7 +36,7 @@ class DatabaseManager:
             dict: Datos de la sesión o None si no existe
         """
         try:
-            with open(self.sessions_file, "r") as f:
+            with open(self.sessions_file, "r", encoding='utf-8') as f:
                 sessions = json.load(f)
                 return sessions.get(phone_number)
         except Exception as e:
@@ -53,13 +52,13 @@ class DatabaseManager:
             session_data: Datos de la sesión a guardar
         """
         try:
-            with open(self.sessions_file, "r") as f:
+            with open(self.sessions_file, "r", encoding='utf-8') as f:
                 sessions = json.load(f)
             
             sessions[phone_number] = session_data
             
-            with open(self.sessions_file, "w") as f:
-                json.dump(sessions, f, indent=2)
+            with open(self.sessions_file, "w", encoding='utf-8') as f:
+                json.dump(sessions, f, indent=2, ensure_ascii=False)
         except Exception as e:
             print(f"Error al guardar sesión: {e}")
     
@@ -71,13 +70,13 @@ class DatabaseManager:
             phone_number: Número de teléfono del usuario
         """
         try:
-            with open(self.sessions_file, "r") as f:
+            with open(self.sessions_file, "r", encoding='utf-8') as f:
                 sessions = json.load(f)
             
             if phone_number in sessions:
                 del sessions[phone_number]
             
-            with open(self.sessions_file, "w") as f:
+            with open(self.sessions_file, "w", encoding='utf-8') as f:
                 json.dump(sessions, f, indent=2)
         except Exception as e:
             print(f"Error al eliminar sesión: {e}")
@@ -90,9 +89,8 @@ class DatabaseManager:
             rfi_data: Datos del RFI a guardar
             phone_number: Número de teléfono del usuario
         """
-        try:
-            # Leer RFIs existentes
-            with open(self.rfis_file, "r") as f:
+        try:            # Leer RFIs existentes
+            with open(self.rfis_file, "r", encoding='utf-8') as f:
                 rfis = json.load(f)
             
             # Crear ID único para el RFI
@@ -109,9 +107,8 @@ class DatabaseManager:
                 'creation_time': rfi_data.get('creation_time', time.time()),
                 'created_at': datetime.now().isoformat()
             }
-            
-            # Guardar archivo
-            with open(self.rfis_file, "w") as f:
+              # Guardar archivo
+            with open(self.rfis_file, "w", encoding='utf-8') as f:
                 json.dump(rfis, f, indent=2)
             
             print(f"RFI #{rfi_id} guardado correctamente para {phone_number}")
@@ -129,10 +126,9 @@ class DatabaseManager:
             rfi_id: ID del RFI
             
         Returns:
-            dict: Datos del RFI o None si no existe
-        """
+            dict: Datos del RFI o None si no existe        """
         try:
-            with open(self.rfis_file, "r") as f:
+            with open(self.rfis_file, "r", encoding='utf-8') as f:
                 rfis = json.load(f)
                 return rfis.get(rfi_id)
         except Exception as e:
@@ -147,10 +143,9 @@ class DatabaseManager:
             phone_number: Número de teléfono del usuario
             
         Returns:
-            list: Lista de RFIs del usuario ordenados por fecha de creación
-        """
+            list: Lista de RFIs del usuario ordenados por fecha de creación        """
         try:
-            with open(self.rfis_file, "r") as f:
+            with open(self.rfis_file, "r", encoding='utf-8') as f:
                 rfis = json.load(f)
                 user_rfis = [rfi for rfi in rfis.values() if rfi.get('phone_number') == phone_number]
                 # Ordenar por fecha de creación (más reciente primero)

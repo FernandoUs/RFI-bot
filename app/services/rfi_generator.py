@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 from datetime import datetime
 from app.utils.config import get_config as get_config_func
 from app.utils.config import get_config
-from app.services.s3_service import upload_file_to_s3
+from app.services.s3_service import upload_file_to_s3, upload_file_from_memory_to_s3
 
 class CustomPDF(FPDF2):
     def __init__(self, *args, **kwargs):
@@ -700,52 +700,66 @@ def generate_rfi_pdf(session_data, rfi_id, phone_number=None):
     # Eliminar la sección "Information or Information Response" y el resto de verificaciones
     
     pdf_filename = f"RFI_{rfi_id}.pdf"
-    pdf_path = os.path.join(config.TEMP_FOLDER, pdf_filename)
     
-    # Asegurarse de que exista la carpeta temporal
-    os.makedirs(config.TEMP_FOLDER, exist_ok=True)
-    
+    # NUEVA IMPLEMENTACIÓN: Generar PDF en memoria
     try:
-        pdf.output(pdf_path)
-        print(f"PDF generado exitosamente: {pdf_path}")
+        # Obtener el PDF como bytes en memoria
+        pdf_bytes = pdf.output(dest='S')  # 'S' retorna string/bytes en lugar de guardar archivo
+        print(f"PDF generado en memoria exitosamente: {pdf_filename}")
         
-        # Eliminar archivos temporales DESPUÉS de que el PDF se ha guardado
+        # Limpiar archivos temporales de imágenes inmediatamente
         if 'temp_files' in locals() and temp_files:
-            time.sleep(3)  # Pequeña pausa para asegurar que el PDF ha liberado los archivos
-            
-            # Definir una función para limpiar archivos temporales
             def cleanup_files():
                 for temp_file in temp_files:
                     try:
                         if os.path.exists(temp_file):
                             os.remove(temp_file)
-                            print(f"Archivo temporal eliminado: {temp_file}")
+                            print(f"Archivo temporal de imagen eliminado: {temp_file}")
                     except Exception as del_error:
                         print(f"No se pudo eliminar archivo temporal {temp_file}: {del_error}")
             
-            # Crear y lanzar hilo para limpieza
-            cleanup_thread = threading.Thread(target=cleanup_files)
-            cleanup_thread.daemon = True
-            cleanup_thread.start()
+            # Limpiar archivos inmediatamente
+            cleanup_files()
+        
+        # Intentar subir directamente a S3 desde memoria
+        try:
+            if hasattr(config, 'S3_UPLOAD_ENABLED') and config.S3_UPLOAD_ENABLED:
+                # Crear un objeto BytesIO para simular un archivo
+                pdf_buffer = io.BytesIO(pdf_bytes.encode('latin1') if isinstance(pdf_bytes, str) else pdf_bytes)
+                
+                # Subir directamente desde memoria a S3
+                s3_url = upload_file_from_memory_to_s3(pdf_buffer, phone_number=phone_number, 
+                                                     file_type="pdf", object_name=pdf_filename)
+                print(f"PDF subido a S3 desde memoria: {s3_url}")
+                
+                # Retornar None como path local (no existe archivo local) y la URL de S3
+                return None, s3_url
+            else:
+                # Fallback: Si S3 no está habilitado, guardar temporalmente
+                pdf_path = os.path.join(config.TEMP_FOLDER, pdf_filename)
+                os.makedirs(config.TEMP_FOLDER, exist_ok=True)
+                
+                with open(pdf_path, 'wb') as f:
+                    f.write(pdf_bytes.encode('latin1') if isinstance(pdf_bytes, str) else pdf_bytes)
+                
+                print(f"S3 no está habilitado. PDF guardado temporalmente: {pdf_path}")
+                return pdf_path, f"file://{pdf_path}"
+                
+        except Exception as s3_error:
+            # Error al subir a S3, guardar temporalmente como fallback
+            print(f"Error al subir PDF a S3 desde memoria: {s3_error}")
+            pdf_path = os.path.join(config.TEMP_FOLDER, pdf_filename)
+            os.makedirs(config.TEMP_FOLDER, exist_ok=True)
+            
+            with open(pdf_path, 'wb') as f:
+                f.write(pdf_bytes.encode('latin1') if isinstance(pdf_bytes, str) else pdf_bytes)
+            
+            print(f"Fallback: PDF guardado localmente: {pdf_path}")
+            return pdf_path, f"file://{pdf_path}"
+            
     except Exception as pdf_error:
-        print(f"Error al guardar el PDF: {pdf_error}")
-    
-    # Intentar subir a S3 si está disponible
-    try:
-        # Verificar si está disponible la función de S3
-        if hasattr(config, 'S3_UPLOAD_ENABLED') and config.S3_UPLOAD_ENABLED:
-            s3_url = upload_file_to_s3(pdf_path, phone_number=phone_number, file_type="pdf", object_name=pdf_filename)
-            print(f"PDF subido a S3: {s3_url}")
-            return pdf_path, s3_url
-        else:
-            # S3 no está habilitado, usar un archivo local
-            local_url = f"file://{pdf_path}"
-            print(f"S3 no está habilitado. Usando archivo local: {local_url}")
-            return pdf_path, local_url
-    except Exception as e:
-        # Error al subir a S3, devolver ruta local
-        print(f"Error al subir PDF a S3: {e}")
-        return pdf_path, f"file://{pdf_path}"
+        print(f"Error al generar el PDF: {pdf_error}")
+        return None, None
 
 def analyze_plan_image(image_path):
     """

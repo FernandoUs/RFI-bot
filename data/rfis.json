@@ -1,113 +1,153 @@
 {
+  "51973592880_1": {
+    "rfi_id": "1",
+    "phone_number": "51973592880",
+    "data": {
+      "proyecto": "Edificio Torre Central",
+      "empresa": "Constructora ABC",
+      "asunto": "Problema de filtraciones en s\u00f3tano",
+      "ubicacion": "S\u00f3tano nivel -1",
+      "descripcion": "Se detectaron filtraciones de agua en la zona de estacionamiento"
+    },
+    "pdf_path": "MEMORIA",
+    "pdf_url": "https://test-s3.amazonaws.com/rfi-bot/users/test/pdfs/RFI_1.pdf",
+    "creation_time": 1750176507.3775647,
+    "created_at": "2025-06-18T11:08:27.377564"
+  },
+  "51973592880_2": {
+    "rfi_id": "2",
+    "phone_number": "51973592880",
+    "data": {
+      "proyecto": "Mall Plaza Norte",
+      "empresa": "Inmobiliaria XYZ",
+      "asunto": "Defectos en acabados de fachada",
+      "ubicacion": "Fachada norte - pisos 3-5",
+      "descripcion": "Grietas visibles en el revestimiento exterior"
+    },
+    "pdf_path": "MEMORIA",
+    "pdf_url": "https://test-s3.amazonaws.com/rfi-bot/users/test/pdfs/RFI_2.pdf",
+    "creation_time": 1750090107.3775647,
+    "created_at": "2025-06-18T11:08:27.399816"
+  },
+  "51973592880_3": {
+    "rfi_id": "3",
+    "phone_number": "51973592880",
+    "data": {
+      "proyecto": "Hospital Regional",
+      "empresa": "Constructora DEF",
+      "asunto": "Instalaciones el\u00e9ctricas defectuosas",
+      "ubicacion": "\u00c1rea de quir\u00f3fanos - piso 4",
+      "descripcion": "Interrupciones frecuentes en el suministro el\u00e9ctrico"
+    },
+    "pdf_path": "MEMORIA",
+    "pdf_url": "https://test-s3.amazonaws.com/rfi-bot/users/test/pdfs/RFI_3.pdf",
+    "creation_time": 1750003707.3775647,
+    "created_at": "2025-06-18T11:08:27.418761"
+  },
   "+51973592880_1": {
     "rfi_id": "1",
     "phone_number": "+51973592880",
     "data": {
       "images": [
-        "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/5c39e9975c9e5d4057f47078a3f61762/images/image_1749157462_462_1749157474.jpg?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=LED5It4Jgo7TNNNPJMWFLS7%2FCfU%3D&Expires=1749762285"
+        "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/5c39e9975c9e5d4057f47078a3f61762/images/image_1750263593_593_1750263598.jpg?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=ounfWjkz49UvfozLfCsz22cAJRo%3D&Expires=1750868402"
       ],
-      "nombre_usuario": "Fernando Usurin",
+      "nombre_usuario": "Fabri Meza",
       "cargo_usuario": "Operario",
-      "fecha_respuesta": "26/06/2025",
+      "fecha_respuesta": "18/52/26",
       "num_documentos_referencia": 0,
-      "especialidad": "Estructuras",
+      "especialidad": "Sanitarias",
       "incompatibilidad": false,
-      "piso": "10",
-      "sector": "AS/5",
-      "descripcion_original": "Seg\u00fan el plano, no esta bien los refuerzos puesto en el muro de la parte superior y eso causa problemas para iniciar con la\u00a0siguiente\u00a0etapa",
-      "descripcion_mejorada": "Se observa una discrepancia entre la ubicaci\u00f3n de los refuerzos en el muro superior y lo indicado en los planos. Esta situaci\u00f3n impide el inicio de las siguientes etapas de construcci\u00f3n,  requiriendo una revisi\u00f3n y posible correcci\u00f3n de la colocaci\u00f3n de la armadura antes de proceder.",
-      "asunto": "Discrepancia de refuerzo de muro Revisi\u00f3n urgente."
+      "piso": "1",
+      "sector": "82/n",
+      "descripcion_original": "Hay una fuga de agua de los ba\u00f1os, aparentemente es de las duchas",
+      "descripcion_mejorada": "Se reporta una fuga de agua proveniente de los ba\u00f1os, presuntamente originada en las duchas.  Se requiere una investigaci\u00f3n para determinar la fuente precisa de la fuga,  incluyendo la identificaci\u00f3n de las posibles \u00e1reas afectadas y la evaluaci\u00f3n del da\u00f1o estructural existente.",
+      "asunto": "Investigaci\u00f3n de fuga de agua en ba\u00f1os."
     },
-    "pdf_path": "C:\\Users\\Fernando\\Documents\\UTEC\\RFI bot\\RFI-bot\\temp\\RFI_1.pdf",
-    "pdf_url": null,
-    "creation_time": 1749157633.7329874,
-    "created_at": "2025-06-05T16:07:13.757783"
+    "pdf_path": "MEMORIA",
+    "pdf_url": "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/5c39e9975c9e5d4057f47078a3f61762/pdfs/RFI_1.pdf?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=1JaTydflON3kvovj8ae3kFwygUw%3D&Expires=1750350065",
+    "creation_time": 1750263665.203679,
+    "created_at": "2025-06-18T11:21:05.234607"
   },
   "+51973592880_2": {
     "rfi_id": "2",
     "phone_number": "+51973592880",
     "data": {
       "images": [
-        "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/5c39e9975c9e5d4057f47078a3f61762/images/image_1749157462_462_1749157474.jpg?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=LED5It4Jgo7TNNNPJMWFLS7%2FCfU%3D&Expires=1749762285",
-        "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/5c39e9975c9e5d4057f47078a3f61762/images/image_1749224045_45_1749224054.jpg?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=W0NTtzwbh1oKKMKbTMzmPTonmPw%3D&Expires=1749828863"
+        "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/5c39e9975c9e5d4057f47078a3f61762/images/image_1750264969_969_1750264972.jpg?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=yzhbj0XLQKycDvdyE38rmKoJmeE%3D&Expires=1750869776"
       ],
-      "nombre_usuario": "Fernando Usurin",
-      "cargo_usuario": "Operario",
-      "fecha_respuesta": "26/06/2025",
+      "nombre_usuario": "Cesar Perales",
+      "cargo_usuario": "Arquitecto",
+      "fecha_respuesta": "02/08/25",
       "num_documentos_referencia": 0,
-      "especialidad": "Estructuras",
+      "especialidad": "Sanitarias",
       "incompatibilidad": false,
-      "piso": "10",
-      "sector": "AS/5",
-      "descripcion_original": "Seg\u00fan el plano, no esta bien los refuerzos puesto en el muro de la parte superior y eso causa problemas para iniciar con la\u00a0siguiente\u00a0etapa",
-      "descripcion_mejorada": "La colocaci\u00f3n de la armadura en el muro superior no se ajusta a los planos aprobados.  Esta discrepancia impide el avance a la siguiente fase constructiva, generando un retraso en el cronograma del proyecto y requiriendo una evaluaci\u00f3n inmediata para determinar la soluci\u00f3n m\u00e1s adecuada y asegurar la integridad estructural.",
-      "asunto": "Discrepancia armadura muro superior evaluaci\u00f3n y soluci\u00f3n."
+      "piso": "12",
+      "sector": "S/5",
+      "descripcion_original": "Fuga de agua proveniente de la\u00a0cocina",
+      "descripcion_mejorada": "Se presenta una fuga de agua activa localizada en la cocina.  La infiltraci\u00f3n de agua requiere una inspecci\u00f3n inmediata para determinar la fuente precisa de la fuga (tuber\u00edas, grifos, sellado, etc.) y el alcance del da\u00f1o resultante a la estructura y acabados. Se requiere una evaluaci\u00f3n completa para determinar las acciones correctivas necesarias.",
+      "asunto": "Inspecci\u00f3n y reparaci\u00f3n de fuga de agua en cocina"
     },
-    "pdf_path": "C:\\Users\\Fernando\\Documents\\UTEC\\RFI bot\\RFI-bot\\temp\\RFI_2.pdf",
-    "pdf_url": "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/5c39e9975c9e5d4057f47078a3f61762/pdfs/RFI_2.pdf?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=LdOvjQJw7l7SSR7zuiLQcHgSz60%3D&Expires=1749828884",
-    "creation_time": 1749224084.3022108,
-    "created_at": "2025-06-06T10:34:44.303204"
+    "pdf_path": "MEMORIA",
+    "pdf_url": "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/5c39e9975c9e5d4057f47078a3f61762/pdfs/RFI_2.pdf?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=4T2uIpr3mJluDP1XBr%2FaFtivRHU%3D&Expires=1750351382",
+    "creation_time": 1750264982.3865185,
+    "created_at": "2025-06-18T11:43:02.386518"
   },
   "+51973592880_3": {
     "rfi_id": "3",
     "phone_number": "+51973592880",
     "data": {
       "images": [
-        "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/5c39e9975c9e5d4057f47078a3f61762/images/image_1749157462_462_1749157474.jpg?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=LED5It4Jgo7TNNNPJMWFLS7%2FCfU%3D&Expires=1749762285",
-        "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/5c39e9975c9e5d4057f47078a3f61762/images/image_1749224045_45_1749224054.jpg?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=W0NTtzwbh1oKKMKbTMzmPTonmPw%3D&Expires=1749828863",
-        "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/5c39e9975c9e5d4057f47078a3f61762/images/image_1749238989_989_1749238997.jpg?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=Y74LRlNnPutsGlpur9vb%2F%2Fddw3s%3D&Expires=1749843807"
+        "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/5c39e9975c9e5d4057f47078a3f61762/images/image_1750267936_936_1750267938.jpg?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=KCSJ1Qz60c9zwAjFRIFT6xPHZWc%3D&Expires=1750872741"
       ],
       "nombre_usuario": "Fernando Usurin",
       "cargo_usuario": "Operario",
-      "fecha_respuesta": "25/06/2025",
+      "fecha_respuesta": "26/06/24",
       "num_documentos_referencia": 0,
-      "especialidad": "El\u00e9ctricas",
+      "especialidad": "Estructuras",
       "incompatibilidad": false,
       "piso": "2",
-      "sector": "AS7/1",
-      "descripcion_original": "Las conexiones el\u00e9ctricas no est\u00e1n bien reforzadas, algunas no tienen sentido y hasta he encontrado cables pelados, podr\u00eda ser un riesgo para los dem\u00e1s",
-      "descripcion_mejorada": "Se han detectado deficiencias significativas en el sistema de conexiones el\u00e9ctricas.  Se observan conexiones inadecuadamente reforzadas, inconsistencias en el tendido de cableado que sugieren un dise\u00f1o deficiente, y la presencia de cables con aislamiento da\u00f1ado exponiendo conductores. Esta situaci\u00f3n representa un riesgo potencial de incendio y choque el\u00e9ctrico, comprometiendo la seguridad del personal y la integridad de la instalaci\u00f3n.",
-      "asunto": "RFI Deficiencias el\u00e9ctricas, riesgo de incendio."
+      "sector": "AS/5",
+      "descripcion_original": "El muro superior de la parte principal del sector esta desviado y no tiene proporci\u00f3n uniforme",
+      "descripcion_mejorada": "Se observa una desviaci\u00f3n significativa en la alineaci\u00f3n del muro superior de la estructura principal, presentando una falta de uniformidad en sus dimensiones y  posiblemente comprometiendo la estabilidad estructural del sector.  La desviaci\u00f3n implica una inconsistencia geom\u00e9trica que requiere evaluaci\u00f3n para determinar su causa y alcance.",
+      "asunto": "Alineaci\u00f3n de muro evaluaci\u00f3n de desviaci\u00f3n estructural."
     },
-    "pdf_path": "C:\\Users\\Fernando\\Documents\\UTEC\\RFI bot\\RFI-bot\\temp\\RFI_3.pdf",
-    "pdf_url": "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/5c39e9975c9e5d4057f47078a3f61762/pdfs/RFI_3.pdf?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=lOPRThRWA2FNoxh2sOKmEOqXcyY%3D&Expires=1749843830",
-    "creation_time": 1749239030.5731187,
-    "created_at": "2025-06-06T14:43:50.574124"
+    "pdf_path": "MEMORIA",
+    "pdf_url": "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/5c39e9975c9e5d4057f47078a3f61762/pdfs/RFI_3.pdf?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=t2Pvow6fPyzH1sTY4qcDJqVLFSc%3D&Expires=1750354346",
+    "creation_time": 1750267946.515909,
+    "created_at": "2025-06-18T12:32:26.515908"
   },
   "+51973592880_4": {
     "rfi_id": "4",
     "phone_number": "+51973592880",
     "data": {
-      "images": [
-        "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/5c39e9975c9e5d4057f47078a3f61762/images/image_1749240169_169_1749240177.jpg?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=WSB5Woorqo%2Fy9UQRImHSEbwqSxQ%3D&Expires=1749844986"
-      ],
-      "nombre_usuario": "Fabryzio Meza",
-      "cargo_usuario": "Supervisor",
-      "fecha_respuesta": "08/06/2026",
+      "images": [],
+      "nombre_usuario": "Mcqueen",
+      "cargo_usuario": "operario",
+      "fecha_respuesta": "08/06/25",
       "num_documentos_referencia": 0,
-      "especialidad": "Sanitarias",
+      "especialidad": "Estructuras",
       "incompatibilidad": false,
-      "piso": "3",
-      "sector": "A/S2",
-      "descripcion_original": "Hay una fuga de agua que esta afectando a la oficina de la aerol\u00ednea Sky, presuntamente la tuber\u00eda viene de los lavadores del mismo piso 3",
-      "descripcion_mejorada": "Se ha detectado una fuga de agua activa en la oficina de la aerol\u00ednea Sky, ubicada en el tercer piso del edificio.  La fuente presunta de la fuga son las tuber\u00edas de los lavabos del mismo piso, requiriendo una inspecci\u00f3n y reparaci\u00f3n inmediata para mitigar da\u00f1os estructurales y operativos.",
-      "asunto": "Reparaci\u00f3n urgente de fuga de agua en ba\u00f1os."
+      "piso": "1",
+      "sector": "S/D5",
+      "descripcion_original": "Las estructuras no est\u00e1n bien medidas seg\u00fan el plano",
+      "descripcion_mejorada": "Se han detectado discrepancias dimensionales significativas entre las estructuras ejecutadas in situ y los planos de construcci\u00f3n aprobados.  Estas variaciones comprometen la integridad estructural y la correcta ejecuci\u00f3n del proyecto, requiriendo una evaluaci\u00f3n exhaustiva para determinar la causa ra\u00edz y el alcance de las desviaciones.",
+      "asunto": "Discrepancias dimensionales evaluaci\u00f3n y remediaci\u00f3n."
     },
-    "pdf_path": "C:\\Users\\Fernando\\Documents\\UTEC\\RFI bot\\RFI-bot\\temp\\RFI_4.pdf",
-    "pdf_url": "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/5c39e9975c9e5d4057f47078a3f61762/pdfs/RFI_4.pdf?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=%2FvLbX%2Bmwa0WTBY%2FhKZTwmn77dMc%3D&Expires=1749845000",
-    "creation_time": 1749240200.939273,
-    "created_at": "2025-06-06T15:03:20.940372"
+    "pdf_path": "MEMORIA",
+    "pdf_url": "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/5c39e9975c9e5d4057f47078a3f61762/pdfs/RFI_4.pdf?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=DxX4a7gdsmN9Q0cvr4685f5I3jI%3D&Expires=1750355820",
+    "creation_time": 1750269420.9523551,
+    "created_at": "2025-06-18T12:57:00.952355"
   },
   "+51933470673_1": {
     "rfi_id": "1",
     "phone_number": "+51933470673",
     "data": {
       "images": [
-        "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/e8851b5c5303058a27b982f257c46d10/images/image_1749243102_102_1749243110.jpg?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=BGzP273X7r9Va4%2FoYHMejbrIpXo%3D&Expires=1749847919"
+        "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/e8851b5c5303058a27b982f257c46d10/images/image_1750278127_127_1750278130.jpg?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=BRITRs6%2Fl1CcAF8qPyHZqL1Ox%2FQ%3D&Expires=1750882933"
       ],
-      "nombre_usuario": "Alessander Del Piero Lopez Mesones",
-      "cargo_usuario": "Ingeniero Estructural",
-      "fecha_respuesta": "08/06/25",
+      "nombre_usuario": "Alessander",
+      "cargo_usuario": "Ing. Estructural",
+      "fecha_respuesta": "20/06/25",
       "num_documentos_referencia": 2,
       "documentos_referencia": [
         "Plano E-01",
@@ -116,210 +156,71 @@
       "especialidad": "Estructuras",
       "incompatibilidad": true,
       "incompatibilidad_con": "Arquitectura",
-      "piso": "4",
-      "sector": "Sector de sala, K4",
-      "descripcion_original": "Hay una incompatibilidad con los muros estructurales y los ejes del plano arquitect\u00f3nico, no se detalla con claridad las dimensiones. Tambi\u00e9n hay un cambio de tipo de concreto a usar, pasando del 21MPa a 28MPa de fc",
-      "descripcion_mejorada": "Se detect\u00f3 una discrepancia entre las dimensiones de los muros estructurales y los ejes indicados en los planos arquitect\u00f3nicos,  careciendo estos \u00faltimos de la precisi\u00f3n dimensional necesaria.  Adicionalmente, se requiere modificar el dise\u00f1o original, cambiando la resistencia a compresi\u00f3n del concreto previsto de f'c = 21 MPa a f'c = 28 MPa.  Esta modificaci\u00f3n implica una revisi\u00f3n de los c\u00e1lculos estructurales.",
-      "asunto": "Discrepancias dimensionales y cambio de resistencia del concreto."
+      "piso": "5",
+      "sector": "Piso 4 -sector 2",
+      "descripcion_original": "Problema de incongruencia de medidas de muro estructural con los ejes de arquitectura",
+      "descripcion_mejorada": "Se detectaron discrepancias entre las dimensiones del muro estructural, seg\u00fan los planos de ingenier\u00eda, y la ubicaci\u00f3n de los ejes arquitect\u00f3nicos definidos en los planos arquitect\u00f3nicos.  Esta incongruencia genera conflictos en la alineaci\u00f3n prevista del muro con respecto a las  estructuras adyacentes y elementos arquitect\u00f3nicos, requiriendo una revisi\u00f3n y ajuste para asegurar la compatibilidad y evitar interferencias constructivas.",
+      "asunto": "Discrepancias en planos muro estructural y ejes."
     },
-    "pdf_path": "C:\\Users\\Fernando\\Documents\\UTEC\\RFI bot\\RFI-bot\\temp\\RFI_1.pdf",
-    "pdf_url": "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/e8851b5c5303058a27b982f257c46d10/pdfs/RFI_1.pdf?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=K%2F6ZDimb1Z9Wcoz3WVZeBWG5nZU%3D&Expires=1749847936",
-    "creation_time": 1749243136.5519786,
-    "created_at": "2025-06-06T15:52:16.553104"
+    "pdf_path": "MEMORIA",
+    "pdf_url": "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/e8851b5c5303058a27b982f257c46d10/pdfs/RFI_1.pdf?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=qIDEFYEGBcE%2FBgzVCdut9U2e6mk%3D&Expires=1750364538",
+    "creation_time": 1750278138.7512805,
+    "created_at": "2025-06-18T15:22:18.751280"
   },
   "+51933470673_2": {
     "rfi_id": "2",
     "phone_number": "+51933470673",
     "data": {
       "images": [
-        "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/e8851b5c5303058a27b982f257c46d10/images/image_1749243946_946_1749243954.jpg?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=dX7cN4ghm3lUeET7lu9hpatKxjo%3D&Expires=1749848763"
-      ],
-      "nombre_usuario": "Alessander Lopez",
-      "cargo_usuario": "Ing Estructural",
-      "fecha_respuesta": "07/06/25",
-      "num_documentos_referencia": 2,
-      "documentos_referencia": [
-        "Plano E-01",
-        "Especificaci\u00f3n\u00a0t\u00e9cnica"
-      ],
-      "especialidad": "Estructuras",
-      "incompatibilidad": true,
-      "incompatibilidad_con": "Arquitectura",
-      "piso": "5",
-      "sector": "Sector SALA, K5",
-      "descripcion_original": "Hay una incompatibilidad con los muros estructurales y los ejes del plano arquitect\u00f3nico, no se detalla con claridad las dimensiones. Tambi\u00e9n hay un cambio de tipo de concreto a usar, pasando del 21MPa a 28MPa de fc",
-      "descripcion_mejorada": "Se detectaron inconsistencias entre los planos arquitect\u00f3nicos y estructurales, espec\u00edficamente en la definici\u00f3n de las dimensiones de los muros de carga y su relaci\u00f3n con los ejes referenciados.  Adicionalmente, se requiere aclarar la modificaci\u00f3n del dise\u00f1o del concreto,  cambiando la resistencia a compresi\u00f3n especificada de 21 MPa a 28 MPa.  Esta discrepancia requiere una revisi\u00f3n y aclaraci\u00f3n para asegurar la correcta ejecuci\u00f3n del proyecto.",
-      "asunto": "Inconsistencias en planos y resistencia del concreto."
-    },
-    "pdf_path": "C:\\Users\\Fernando\\Documents\\UTEC\\RFI bot\\RFI-bot\\temp\\RFI_2.pdf",
-    "pdf_url": "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/e8851b5c5303058a27b982f257c46d10/pdfs/RFI_2.pdf?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=L4UxvWSRraGaPvDmxt0uK0Oi9bU%3D&Expires=1749848781",
-    "creation_time": 1749243981.1959636,
-    "created_at": "2025-06-06T16:06:21.195963"
-  },
-  "+51933470673_3": {
-    "rfi_id": "3",
-    "phone_number": "+51933470673",
-    "data": {
-      "images": [
-        "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/e8851b5c5303058a27b982f257c46d10/images/image_1749417374_374_1749417377.jpg?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=QBHfPsEhCUAG0quXcuXeOpyjsp4%3D&Expires=1750022181"
+        "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/e8851b5c5303058a27b982f257c46d10/images/image_1750278985_985_1750278988.jpg?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=xMyuWwRFiqZHYfCtPa%2BKMji0sXc%3D&Expires=1750883790"
       ],
       "nombre_usuario": "Aless",
       "cargo_usuario": "Ing. Estructural",
-      "fecha_respuesta": "09/06/25",
-      "num_documentos_referencia": 2,
+      "fecha_respuesta": "20/06/25",
+      "num_documentos_referencia": 3,
       "documentos_referencia": [
         "Plano E-01",
-        "Memo 132"
+        "Memo 132",
+        "Especificaci\u00f3n t\u00e9cnica"
       ],
-      "especialidad": "Arquitectura",
+      "especialidad": "Mov. Tierras",
       "incompatibilidad": true,
-      "incompatibilidad_con": "Estructuras",
-      "piso": "3",
-      "sector": "Sector K -torreB",
-      "descripcion_original": "Los ejes estructurales no se alinean con los de arquitectura, los muros chocan con los vanos de luz",
-      "descripcion_mejorada": "Se detect\u00f3 una discrepancia entre los ejes estructurales y los ejes arquitect\u00f3nicos del proyecto.  Esta incongruencia resulta en conflictos entre la ubicaci\u00f3n de los muros estructurales y las aberturas previstas en el dise\u00f1o arquitect\u00f3nico, generando interferencias que requieren una resoluci\u00f3n inmediata para asegurar la integridad estructural y la funcionalidad del edificio.",
-      "asunto": "Discrepancia ejes estructurales y arquitect\u00f3nicos."
+      "incompatibilidad_con": "Sanitarias",
+      "piso": "9",
+      "sector": ".",
+      "descripcion_original": "Las tuber\u00edas est\u00e1n muy al ras de la excavaci\u00f3n, puede da\u00f1arse el sistema de drenaje al excavar la cimentaci\u00f3n, requiero una soluci\u00f3n",
+      "descripcion_mejorada": "El sistema de drenaje existente se encuentra a una profundidad m\u00ednima, presentando un riesgo significativo de da\u00f1o durante las excavaciones para la cimentaci\u00f3n.  La proximidad de las tuber\u00edas a la superficie de excavaci\u00f3n compromete la integridad del sistema de drenaje y requiere una soluci\u00f3n que garantice su protecci\u00f3n durante las obras.",
+      "asunto": "Protecci\u00f3n de drenaje existente para nueva cimentaci\u00f3n"
     },
-    "pdf_path": "C:\\Users\\Fernando\\Documents\\UTEC\\RFI bot\\RFI-bot\\temp\\RFI_3.pdf",
-    "pdf_url": "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/e8851b5c5303058a27b982f257c46d10/pdfs/RFI_3.pdf?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=o6tbVNEARPkZoVrIMQN4sPUE5wY%3D&Expires=1750022189",
-    "creation_time": 1749417389.3482022,
-    "created_at": "2025-06-08T16:16:29.349217"
+    "pdf_path": "MEMORIA",
+    "pdf_url": "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/e8851b5c5303058a27b982f257c46d10/pdfs/RFI_2.pdf?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=bf2C3lFRFTFW1V3sLzYsAKm06UA%3D&Expires=1750365777",
+    "creation_time": 1750279377.5792198,
+    "created_at": "2025-06-18T15:42:57.596934"
   },
-  "+51933470673_4": {
-    "rfi_id": "4",
-    "phone_number": "+51933470673",
-    "data": {
-      "images": [
-        "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/e8851b5c5303058a27b982f257c46d10/images/image_1749418558_558_1749418560.jpg?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=8oMwaEH1aJ%2FGZWc45YPquM5K11Y%3D&Expires=1750023363"
-      ],
-      "nombre_usuario": "Aless",
-      "cargo_usuario": "Ing. Estructural",
-      "fecha_respuesta": "09/06/25",
-      "num_documentos_referencia": 1,
-      "documentos_referencia": [
-        "Plano E-01"
-      ],
-      "especialidad": "Estructuras",
-      "incompatibilidad": false,
-      "piso": "5",
-      "sector": "Sector 4",
-      "descripcion_original": "Hay una incompatibilidad con los muros estructurales y los ejes del plano arquitect\u00f3nico, no se detalla con claridad las dimensiones. Tambi\u00e9n hay un cambio de tipo de concreto a usar, pasando del 21MPa a 28MPa de fc",
-      "descripcion_mejorada": "Se detectaron inconsistencias dimensionales entre los muros estructurales y los ejes indicados en los planos arquitect\u00f3nicos,  faltando informaci\u00f3n precisa sobre las dimensiones de los muros.  Adicionalmente, se requiere aclarar el cambio en la especificaci\u00f3n del concreto,  modific\u00e1ndose de una resistencia a compresi\u00f3n caracter\u00edstica (f'c) de 21 MPa a 28 MPa.",
-      "asunto": "Inconsistencias dimensionales y cambio en especificaci\u00f3n de concreto."
-    },
-    "pdf_path": "C:\\Users\\Fernando\\Documents\\UTEC\\RFI bot\\RFI-bot\\temp\\RFI_4.pdf",
-    "pdf_url": "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/e8851b5c5303058a27b982f257c46d10/pdfs/RFI_4.pdf?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=4BMsgf4MBw9csPRQgZLxWxRxCpw%3D&Expires=1750023371",
-    "creation_time": 1749418572.0117857,
-    "created_at": "2025-06-08T16:36:12.014078"
-  },
-  "+51933470673_5": {
+  "+51973592880_5": {
     "rfi_id": "5",
-    "phone_number": "+51933470673",
+    "phone_number": "+51973592880",
     "data": {
-      "images": [
-        "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/e8851b5c5303058a27b982f257c46d10/images/image_1749419125_125_1749419126.jpg?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=JjI5fEKW6WN%2Ff9UIlUsPA1uyrms%3D&Expires=1750023929"
-      ],
-      "nombre_usuario": "Aless",
-      "cargo_usuario": "Ing. Estructural",
-      "fecha_respuesta": "09/06/25",
-      "num_documentos_referencia": 1,
+      "images": [],
+      "nombre_usuario": "Fernando Usurin",
+      "cargo_usuario": "Tecnico Operario",
+      "fecha_respuesta": "26/06/25",
+      "num_documentos_referencia": 2,
       "documentos_referencia": [
-        "PLano E-01"
+        "Plano de Estructuras",
+        "Espacios requeridos solicitados"
       ],
-      "especialidad": "Estructuras",
-      "incompatibilidad": true,
-      "incompatibilidad_con": "Arquitectura",
-      "piso": "4",
-      "sector": "Sector K",
-      "descripcion_original": "Hay una incompatibilidad con los muros estructurales y los ejes del plano arquitect\u00f3nico, no se detalla con claridad las dimensiones. Tambi\u00e9n hay un cambio de tipo de concreto a usar, pasando del 21MPa a 28MPa de fc",
-      "descripcion_mejorada": "Se detect\u00f3 una discrepancia entre las dimensiones de los muros estructurales y los ejes indicados en los planos arquitect\u00f3nicos, carentes de la precisi\u00f3n dimensional necesaria.  Adicionalmente, se ha modificado la especificaci\u00f3n del concreto,  requiriendo ahora una resistencia a compresi\u00f3n caracter\u00edstica (f'c) de 28 MPa en lugar de los 21 MPa inicialmente previstos.  Esta inconsistencia requiere aclaraci\u00f3n y verificaci\u00f3n.",
-      "asunto": "Discrepancias dimensionales y especificaci\u00f3n de concreto."
-    },
-    "pdf_path": "C:\\Users\\Fernando\\Documents\\UTEC\\RFI bot\\RFI-bot\\temp\\RFI_5.pdf",
-    "pdf_url": "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/e8851b5c5303058a27b982f257c46d10/pdfs/RFI_5.pdf?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=%2B5h9a18BTg1rsR3Ai0hhYpRpdN4%3D&Expires=1750023937",
-    "creation_time": 1749419137.7812781,
-    "created_at": "2025-06-08T16:45:37.782519"
-  },
-  "+51933470673_6": {
-    "rfi_id": "6",
-    "phone_number": "+51933470673",
-    "data": {
-      "images": [
-        "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/e8851b5c5303058a27b982f257c46d10/images/image_1749419386_386_1749419388.jpg?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=QdKo7sil6jWwRAovq1zMxW06K7w%3D&Expires=1750024190"
-      ],
-      "nombre_usuario": "Alessander",
-      "cargo_usuario": "Ing. Estructural",
-      "fecha_respuesta": "09/06/25",
-      "num_documentos_referencia": 0,
       "especialidad": "Estructuras",
       "incompatibilidad": false,
-      "piso": "4",
-      "sector": "Sector K . L",
-      "descripcion_original": "Hay una incompatibilidad con los muros estructurales y los ejes del plano arquitect\u00f3nico, no se detalla con claridad las dimensiones. Tambi\u00e9n hay un cambio de tipo de concreto a usar, pasando del 21MPa a 28MPa de fc",
-      "descripcion_mejorada": "Se detect\u00f3 una discrepancia entre las dimensiones de los muros estructurales y los ejes indicados en los planos arquitect\u00f3nicos, careciendo estos \u00faltimos de la precisi\u00f3n dimensional necesaria.  Adicionalmente, se observa una modificaci\u00f3n en la especificaci\u00f3n del concreto, cambiando de una resistencia a compresi\u00f3n caracter\u00edstica (fc) de 21 MPa a 28 MPa.  Esta inconsistencia requiere aclaraci\u00f3n para asegurar la correcta ejecuci\u00f3n de la obra.",
-      "asunto": "Discrepancias en planos y especificaciones de concreto."
+      "piso": "10",
+      "sector": "AS8/a5",
+      "descripcion_original": "Hay incosistencia en los muros, no est\u00e1n de las medidas correctas ni el espacio",
+      "descripcion_mejorada": "Se detectaron inconsistencias dimensionales en los muros construidos.  Las dimensiones ejecutadas no se ajustan a los planos de construcci\u00f3n, presentando desviaciones en las medidas lineales y en el espacio disponible entre ellos.  Esto genera discrepancias que podr\u00edan afectar la integridad estructural y la funcionalidad del espacio.",
+      "asunto": "Inconsistencias dimensionales en muros construidos."
     },
-    "pdf_path": "C:\\Users\\Fernando\\Documents\\UTEC\\RFI bot\\RFI-bot\\temp\\RFI_6.pdf",
-    "pdf_url": "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/e8851b5c5303058a27b982f257c46d10/pdfs/RFI_6.pdf?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=Ft99sxfVEvvNwTVh%2B2TouBnKHdo%3D&Expires=1750024198",
-    "creation_time": 1749419398.2392108,
-    "created_at": "2025-06-08T16:49:58.261137"
-  },
-  "+51933470673_7": {
-    "rfi_id": "7",
-    "phone_number": "+51933470673",
-    "data": {
-      "images": [
-        "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/e8851b5c5303058a27b982f257c46d10/images/image_1749573926_926_1749573935.jpg?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=GYOcbZ2%2BPqklPxn39sJjj9x90ZU%3D&Expires=1750178745"
-      ],
-      "nombre_usuario": "Alessander Del Piero Lopez Mesones",
-      "cargo_usuario": "Ing Estructural",
-      "fecha_respuesta": "13/06/25",
-      "num_documentos_referencia": 2,
-      "especialidad": "Estructuras",
-      "incompatibilidad": true,
-      "piso": "5",
-      "sector": "sector 3 K3",
-      "descripcion_original": "Hay una incompatibilidad con los muros estructurales y los ejes del plano arquitect\u00f3nico, no se detalla con claridad las dimensiones. Tambi\u00e9n hay un cambio de tipo de concreto a usar, pasando del 21MPa a 28MPa de fc",
-      "descripcion_mejorada": "Se detectaron inconsistencias entre la geometr\u00eda de los muros estructurales y las cotas indicadas en los planos arquitect\u00f3nicos, presentando falta de precisi\u00f3n dimensional en la documentaci\u00f3n.  Adicionalmente, se observa una modificaci\u00f3n en la especificaci\u00f3n del concreto, requiriendo un cambio del f'c de 21 MPa a 28 MPa.",
-      "asunto": "Inconsistencias geom\u00e9tricas y cambio de especificaci\u00f3n de concreto.",
-      "documentos_referencia": [
-        "Plano E-01",
-        "Memo 132"
-      ],
-      "incompatibilidad_con": "Arquitectura"
-    },
-    "pdf_path": "C:\\Users\\Fernando\\Documents\\UTEC\\RFI bot\\RFI-bot\\temp\\RFI_7.pdf",
-    "pdf_url": "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/e8851b5c5303058a27b982f257c46d10/pdfs/RFI_7.pdf?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=hlw69vtMiUPhj6LZAjkzIEDEdWw%3D&Expires=1750178762",
-    "creation_time": 1749573962.7070756,
-    "created_at": "2025-06-10T11:46:02.708584"
-  },
-  "+51933470673_8": {
-    "rfi_id": "8",
-    "phone_number": "+51933470673",
-    "data": {
-      "images": [
-        "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/e8851b5c5303058a27b982f257c46d10/images/image_1749574290_290_1749574300.jpg?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=eEnMhmlS3lpyAYQcs4Cz91TKuS4%3D&Expires=1750179109"
-      ],
-      "nombre_usuario": "Aless",
-      "cargo_usuario": "Ing. Estructural",
-      "fecha_respuesta": "15/06/25",
-      "num_documentos_referencia": 2,
-      "especialidad": "Movimiento de tierras 4",
-      "incompatibilidad": true,
-      "piso": "3",
-      "sector": "Sector cuarto K3",
-      "descripcion_original": "Hay una incompatibilidad con los muros estructurales y los ejes del plano arquitect\u00f3nico, no se detalla con claridad las dimensiones. Tambi\u00e9n hay un cambio de tipo de concreto a usar, pasando del 21MPa a 28MPa de fc",
-      "descripcion_mejorada": "Se detectaron inconsistencias dimensionales entre los muros estructurales y los ejes indicados en los planos arquitect\u00f3nicos,  impidiendo una adecuada coordinaci\u00f3n.  Adicionalmente, se observa una modificaci\u00f3n en la especificaci\u00f3n del concreto, requiriendo un cambio de resistencia a compresi\u00f3n de 21 MPa a 28 MPa.  La falta de claridad en las dimensiones de los muros genera incertidumbre en la ejecuci\u00f3n del proyecto.",
-      "asunto": "Inconsistencias dimensionales y cambio de especificaci\u00f3n de concreto.",
-      "documentos_referencia": [
-        "Plano E-01",
-        "Memo 132"
-      ],
-      "incompatibilidad_con": "Arquitectura"
-    },
-    "pdf_path": "C:\\Users\\Fernando\\Documents\\UTEC\\RFI bot\\RFI-bot\\temp\\RFI_8.pdf",
-    "pdf_url": "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/e8851b5c5303058a27b982f257c46d10/pdfs/RFI_8.pdf?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=WiV0%2F5Z3xANaC1tTgvFpK7WTFYo%3D&Expires=1750179555",
-    "creation_time": 1749574755.0510972,
-    "created_at": "2025-06-10T11:59:15.071006"
+    "pdf_path": "MEMORIA",
+    "pdf_url": "https://anyscale-production-data-cld-2s5xxprx3uhiearmm2mqapkg85.s3.us-west-1.amazonaws.com/rfi-bot/users/5c39e9975c9e5d4057f47078a3f61762/pdfs/RFI_5.pdf?AWSAccessKeyId=AKIAYH6W6IXKYK36NLGE&Signature=ARhrqkeDe8S3xJZAeOWxhA9QD88%3D&Expires=1750365652",
+    "creation_time": 1750279252.098174,
+    "created_at": "2025-06-18T15:40:52.133855"
   }
 }

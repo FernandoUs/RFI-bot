@@ -75,7 +75,7 @@ def configure_routes(app):
                             rfi_data_to_save = {
                                 'data': rfi_data,
                                 'rfi_id': rfi_id,
-                                'pdf_path': pdf_tuple[0] if pdf_tuple and len(pdf_tuple) > 0 else None,
+                                'pdf_path': pdf_tuple[0] if pdf_tuple and len(pdf_tuple) > 0 and pdf_tuple[0] else "MEMORIA",
                                 'pdf_url': pdf_tuple[1] if pdf_tuple and len(pdf_tuple) > 1 else None,
                                 'creation_time': time.time()
                             }

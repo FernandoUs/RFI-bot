@@ -5,13 +5,25 @@ ENV/
 .env/
 .venv/
 */venv/
-rfi-env-312
+rfi-env-312/
+rfi-env/
 .rfi-env-312/
 
-temp
+# Archivos temporales y datos de usuario
 temp/
-data
 data/
+static/images/
+*.jpg
+*.png
+*.jpeg
+*.gif
+*.bmp
+
+# Archivos de sesiones y RFIs (contienen datos sensibles)
+sessions.json
+rfis.json
+rfis_backup.json
+rfis_clean.json
 
 # Archivos de Python
 __pycache__/
@@ -35,12 +47,26 @@ wheels/
 .installed.cfg
 *.egg
 
-# Archivos de configuración local
+# Archivos de configuración local y credenciales
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+config_local.py
+credentials.json
+
+# AWS y servicios externos
+.aws/
+aws-credentials
+*.pem
+*.key
+
+# Archivos de backup y testing
+*.backup
+*.bak
+backup/
+testing/
 
 # Archivos de registro
 *.log
@@ -55,3 +81,40 @@ logs/
 *.swp
 *.swo
 .DS_Store
+Thumbs.db
+
+# Archivos de testing y debug (mantener solo test_basic_functionality.py)
+test/debug_*.py
+test/test_direct_*.py
+test/test_final_*.py
+test/test_full_*.py
+test/test_historial_*.py
+test/test_main_*.py
+test/test_memory_*.py
+test/test_pdf_*.py
+test/test_post_*.py
+test/test_quick_*.py
+test/test_realistic_*.py
+test/test_rfi_*.py
+test/test_s3_*.py
+test/test_twilio_*.py
+test/test_user_*.py
+test/test_whatsapp_*.py
+test/data/
+
+# Archivos de utilidades de desarrollo
+simple_test.py
+reset_all.py
+test_s3.py
+
+# NO ignorar estos archivos importantes para el repo
+!test/test_basic_functionality.py
+!static/css/
+!static/js/
+!.env.example
+!.gitignore
+!README.md
+cleanup_repository.bat
+TESTS_IMPORTANCE.md
+TWILIO_LIMIT_SOLUTION.md
+MEMORY_PDF_IMPLEMENTATION.md

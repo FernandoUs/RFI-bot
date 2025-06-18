@@ -224,7 +224,80 @@ def save_image_from_url(media_url, phone_number, image_index=None, rfi_id=None):
             except Exception as e:
                 print(f"Error al eliminar archivo temporal: {e}")
 
-# Add at the end of s3_service.py:
+def upload_file_from_memory_to_s3(file_buffer, phone_number=None, file_type="pdf", object_name=None):
+    """
+    Sube un archivo desde memoria (BytesIO) a S3 y devuelve la URL
+    
+    Args:
+        file_buffer: Buffer de memoria (BytesIO) con el contenido del archivo
+        phone_number: Número de teléfono del usuario para crear su carpeta
+        file_type: Tipo de archivo (pdf o image)
+        object_name: Nombre personalizado del objeto en S3
+        
+    Returns:
+        str: URL del archivo subido o None si hay error
+    """
+    config = get_config()
+    
+    # Validar credenciales
+    if not config.AWS_ACCESS_KEY or not config.AWS_SECRET_KEY:
+        print("Error: Credenciales de AWS no configuradas")
+        return None
+    
+    try:
+        # Configurar cliente S3
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=config.AWS_ACCESS_KEY,
+            aws_secret_access_key=config.AWS_SECRET_KEY,
+            region_name=config.AWS_REGION
+        )
+        
+        # Construir la ruta del objeto en S3
+        folder_path = "rfi-bot"
+        if phone_number:
+            phone_hash = hash_phone_number(phone_number)
+            if file_type == "pdf":
+                folder_path += f"/users/{phone_hash}/pdfs"
+            elif file_type == "image":
+                folder_path += f"/users/{phone_hash}/images"
+        
+        s3_key = f"{folder_path}/{object_name}"
+        
+        # Determinar el tipo de contenido
+        if file_type == "pdf":
+            content_type = "application/pdf"
+        elif file_type == "image":
+            content_type = "image/jpeg"
+        else:
+            content_type = "application/octet-stream"
+        
+        # Resetear el buffer al inicio
+        file_buffer.seek(0)
+        
+        # Subir el archivo desde memoria
+        s3_client.upload_fileobj(
+            file_buffer,
+            config.S3_BUCKET_NAME,
+            s3_key,
+            ExtraArgs={'ContentType': content_type}
+        )
+        
+        # Generar URL firmada válida por 24 horas
+        presigned_url = s3_client.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': config.S3_BUCKET_NAME, 'Key': s3_key},
+            ExpiresIn=86400  # 24 horas
+        )
+        
+        print(f"Archivo subido desde memoria a S3: {presigned_url}")
+        return presigned_url
+        
+    except Exception as e:
+        print(f"Error al subir archivo desde memoria a S3: {e}")
+        traceback.print_exc()
+        return None
+
 def test_s3_public_access():
     """Test if S3 files can be accessed publicly"""
     test_file = os.path.join(get_config().TEMP_FOLDER, "test_public.txt")
